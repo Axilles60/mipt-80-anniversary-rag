@@ -28,6 +28,7 @@ import os
 import re
 
 from .procedures import _HEADING, _split
+from .stemming import definitions, stem_text
 
 MAX_TOKENS = 300       # child chunk (E5 limit is 512 with the prefix and title)
 OVERLAP_TOKENS = 50
@@ -38,7 +39,12 @@ CREATE TABLE IF NOT EXISTS chunks (id TEXT PRIMARY KEY, source_id TEXT, version 
 CREATE INDEX IF NOT EXISTS chunks_version ON chunks(source_id, version);
 CREATE INDEX IF NOT EXISTS chunks_parent ON chunks(parent_id);
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(id UNINDEXED, index_text);
+CREATE TABLE IF NOT EXISTS abbreviations (abbr TEXT, expansion TEXT, source_id TEXT, version TEXT, chunk_id TEXT);
+CREATE TABLE IF NOT EXISTS chunk_index (key TEXT PRIMARY KEY, value TEXT);
 '''
+# Changing how chunks or their full-text index are built bumps this value;
+# ensure() then rebuilds every version once.
+INDEX_VERSION = '2-stems-abbreviations'
 _TITLE_STYLES = ('title', 'heading', 'заголов', 'subtitle')
 # A template: blanks to fill in, or a capitalised FORM title (not "по форме КМ-7").
 _FORM = re.compile(r'_{4,}|«\s*_+\s*»|\bФОРМА\b')
@@ -281,18 +287,29 @@ def index_version(db, source_id, version):
         for (cid,) in db.execute('SELECT id FROM chunks WHERE source_id=? AND version=?', (source_id, version)).fetchall():
             db.execute('DELETE FROM chunks_fts WHERE id=?', (cid,))
         db.execute('DELETE FROM chunks WHERE source_id=? AND version=?', (source_id, version))
+        db.execute('DELETE FROM abbreviations WHERE source_id=? AND version=?', (source_id, version))
+        db.execute("INSERT OR IGNORE INTO chunk_index VALUES ('version', ?)", (INDEX_VERSION,))
         for c in chunks:
             db.execute('INSERT INTO chunks VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
                        (c['id'], c['source_id'], c['version'], c['fragment_id'], c['start'], c['end'], c['level'],
                         c['parent_id'], c['ord'], c['text'], c['index_text'], json.dumps(c['meta'], ensure_ascii=False)))
             if c['level'] == 2 and c['meta'].get('kind') != 'toc':
-                db.execute('INSERT INTO chunks_fts VALUES (?,?)', (c['id'], c['index_text']))
+                # BM25 over Russian stems (stage R2), not raw word forms.
+                db.execute('INSERT INTO chunks_fts VALUES (?,?)', (c['id'], stem_text(c['index_text'])))
+                for abbr, expansion in definitions(c['text']):
+                    db.execute('INSERT INTO abbreviations VALUES (?,?,?,?,?)', (abbr, expansion, source_id, version, c['id']))
     return len(chunks)
 
 
 def ensure(db):
-    """Chunk every imported version that has no chunks yet (older databases)."""
+    """Chunk every imported version that has no chunks yet (older databases),
+    and rebuild everything once when INDEX_VERSION changed."""
     db.executescript(SCHEMA)
+    built = db.execute("SELECT value FROM chunk_index WHERE key='version'").fetchone()
+    if built is None or built[0] != INDEX_VERSION:
+        with db:
+            db.execute('DELETE FROM chunks'); db.execute('DELETE FROM chunks_fts'); db.execute('DELETE FROM abbreviations')
+            db.execute("INSERT OR REPLACE INTO chunk_index VALUES ('version', ?)", (INDEX_VERSION,))
     missing = db.execute('''SELECT source_id, version FROM imports i WHERE status != 'error' AND NOT EXISTS
         (SELECT 1 FROM chunks c WHERE c.source_id=i.source_id AND c.version=i.version)''').fetchall()
     for row in missing:

@@ -12,8 +12,33 @@ from . import chunking, dense
 from .retrieval import terms
 
 
+def query_terms(db, question):
+    """Stems of the question, expanded with abbreviations defined in the corpus
+    (both directions) and the manual alias list."""
+    from .retrieval import ALIASES
+    from .stemming import query_stems, stem, stem_text, words
+    out = query_stems(question)
+    asked = set(words(question))
+    try:
+        defined = db.execute('SELECT DISTINCT abbr, expansion FROM abbreviations').fetchall()
+    except Exception:
+        defined = []
+    for abbr, expansion in defined:
+        expansion_stems = stem_text(expansion).split()
+        if abbr.lower() in asked:
+            out.extend(s for s in expansion_stems if s not in out)
+        elif expansion_stems and all(s in out for s in expansion_stems):
+            low = stem(abbr.lower())
+            if low not in out: out.append(low)
+    for word in asked:
+        for key, values in ALIASES.items():
+            if word.startswith(key):
+                out.extend(stem(v) for v in values if stem(v) not in out)
+    return out
+
+
 def lexical(db, question, limit=100):
-    tokens = terms(question)
+    tokens = query_terms(db, question)
     if not tokens:
         return []
     query = ' OR '.join('"' + t + '"*' for t in tokens)
