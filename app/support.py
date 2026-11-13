@@ -154,7 +154,7 @@ def answer(db, question):
         return None
     from .questions import split_question
     from .sufficiency import supports
-    from .retrieval import imported, filter_sibling_cells
+    from .retrieval import imported, filter_sibling_cells, heading_only
     parts = split_question(question)
     support_parts = [p for p in parts if not _independent(p)] or parts[:1]
     extra_parts = [p for p in parts if p not in support_parts]
@@ -224,6 +224,7 @@ def answer(db, question):
             found = filter_sibling_cells(imported(db, part, k=3), part)
             rows = [{'text': r['text'], 'id': r['id']} for r in found
                     if r['text'].strip() and len(r['text']) <= 2000 and supports(part, r['text'])
+                    and not heading_only(db, r)
                     and FAULT_TEXT.search(r['text']) is None and _meta_type(db, r['id']) != 'cell']
         result['extra'].append({'part': part, 'items': rows[:3]})
         if not rows:

@@ -141,7 +141,7 @@ def answers(cases, env, labels):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--split', choices=['tuning', 'holdout'], required=True)
+    p.add_argument('--split', choices=['tuning', 'holdout', 'holdout2'], required=True)
     p.add_argument('--modes', default='bm25,dense,hybrid')
     p.add_argument('--report')
     p.add_argument('--scores', action='store_true', help='print dense cosine of best relevant/irrelevant fragment')

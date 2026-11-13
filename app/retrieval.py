@@ -78,6 +78,36 @@ def _with_dense(db, question, lexical, dense):
             rows[row['id']] = row
     return [rows[fid] for fid in order if fid in rows]
 
+_TITLE_STYLES = ('title', 'heading', 'заголов', 'subtitle')
+
+def heading_only(db, row):
+    """True for a fragment that is only a document title or a section heading.
+
+    Such a fragment can identify a document but states no rule, so it is not an
+    answer item. Signals: a DOCX title/heading style; a numbered section heading
+    line; or the first non-empty paragraph of a multi-paragraph document that
+    is short and has no sentence-final punctuation (an unstyled title)."""
+    import json
+    from .procedures import _HEADING
+    try:
+        meta = json.loads(row['metadata'] or '{}')
+    except (ValueError, TypeError):
+        return False
+    if meta.get('type') != 'paragraph':
+        return False
+    text = re.sub(r'\s+', ' ', row['text'] or '').strip()
+    if not text:
+        return False
+    if str(meta.get('style') or '').lower().startswith(_TITLE_STYLES):
+        return True
+    if len(text) > 200 or re.search(r'[.;:!?…]$', text):
+        return False
+    if _HEADING.match(text):
+        return True
+    first = db.execute("SELECT id FROM import_fragments WHERE source_id=? AND version=? AND trim(text)<>'' "
+                       "ORDER BY rowid LIMIT 2", (row['source_id'], row['version'])).fetchall()
+    return len(first) == 2 and first[0]['id'] == row['id']
+
 # These generic request words cannot by themselves identify a document's topic.
 _GENERIC = ('каки', 'куда', 'когда', 'заявк', 'докуме', 'срок', 'сведен',
             'указат', 'содерж', 'нужн', 'обрат', 'сообщ', 'каков', 'после',
@@ -127,7 +157,7 @@ def coherent_candidates(db, question, parts):
     # Preserve the existing sheet-cell isolation before expanding a source.
     rows = filter_sibling_cells(rows, question)
     # Relevance checks still apply for requests about cost, cancellation, etc.
-    return [r for r in rows if len(r['text']) <= 12000 and supports(question,r['text'])][:3]
+    return [r for r in rows if len(r['text']) <= 12000 and supports(question,r['text']) and not heading_only(db, r)][:3]
 
 def filter_sibling_cells(rows, question):
     """Avoid treating sheet-name-only matches as answers for adjacent cells."""

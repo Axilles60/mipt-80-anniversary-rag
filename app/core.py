@@ -45,7 +45,7 @@ def search(db, question):
 
 def imported_parts(db, question):
     """Retrieve and check each part, then report the parts not represented in k."""
-    from .retrieval import imported, filter_sibling_cells, coherent_candidates
+    from .retrieval import imported, filter_sibling_cells, coherent_candidates, heading_only
     from .sufficiency import supports
     from .questions import split_question
     from .procedures import staged
@@ -78,7 +78,9 @@ def imported_parts(db, question):
     for part in parts:
         candidates = filter_sibling_cells(imported(db, part, k=3), part)
         oversized |= any(len(r['text']) > MAX_EXCERPT_CHARS and supports(part, r['text']) for r in candidates)
-        accepted = [r for r in candidates if r['text'].strip() and len(r['text']) <= MAX_EXCERPT_CHARS and supports(part, r['text'])]
+        # A title or heading identifies a document but is not an answer.
+        accepted = [r for r in candidates if r['text'].strip() and len(r['text']) <= MAX_EXCERPT_CHARS
+                    and supports(part, r['text']) and not heading_only(db, r)]
         by_part.append((part, accepted))
         for row in accepted:
             if all(existing['id'] != row['id'] for existing in rows):
