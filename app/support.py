@@ -14,8 +14,13 @@ from .procedures import version_units
 DEVICE = (r'принтер\w*|мфу|сканер\w*|ксерокс\w*|копир\w*|компьютер\w*|ноутбук\w*|монитор\w*|'
           r'оргтехник\w*|печат\w*\s+(?:устройств|техник)\w*|клавиатур\w*|мыш[ьи]\w*|проектор\w*|'
           r'телефон\w*|интернет\w*|сет[ьи]\b|wi-?fi|вай-?фай|почт\w*|учётн\w*\s+запис\w*|учетн\w*\s+запис\w*|'
-          r'програм\w*|устройств\w*|оборудован\w*')
+          r'програм\w*|устройств\w*|оборудован\w*|'
+          # IT services, not only devices.
+          r'vpn|впн|удал[её]нн\w*\s+доступ\w*|доступ\w*\s+к\s+(?:сет|систем|почт|сервер|диск|папк|сайт|портал|програм|приложени)\w*|'
+          r'информационн\w*\s+систем\w*|сайт\w*|портал\w*|приложени[ея]\b|сервер\w*|'
+          r'сетев\w*\s+(?:диск|папк|ресурс)\w*|видеосвяз\w*|видеоконференц\w*|1с\b|1c\b')
 FAULT = (r'не\s+работа\w*|не\s+включа\w*|не\s+печата\w*|не\s+сканир\w*|не\s+открыва\w*|не\s+загружа\w*|'
+         r'нет\s+доступ\w*|не\s+подключа\w*|недоступ\w*|'
          r'неисправ\w*|сломал\w*|слома\w*|поломк\w*|сбо[йяеи]\w*|завис\w*|ошибк\w*|почин\w*|отремонт\w*|'
          r'ремонт\w*|глюч\w*|отказ\w*\s+работ')
 REPORT = r'куда\s+(?:обрат|сообщ|пис|подат|направ|звон)\w*|как\s+(?:сообщ|обрат|подат|оформ)\w*'
@@ -42,6 +47,27 @@ ASK_DETAILS = re.compile(r'что\s+(?:написать|указать|сооб�
                          r'что\s+нужно\s+(?:написать|указать)|состав\w*\s+(?:заявк|обращени)', re.I)
 ASK_TIME = re.compile(r'срок\w*|сколько|когда|как\s+долго|как\s+быстро|через\s+какое', re.I)
 ASK_REPAIR = re.compile(r'почин\w*|отремонт\w*|ремонт\w*|устран\w*|исправ\w*|восстанов\w*', re.I)
+
+
+_FAULT_WORDS = re.compile(r'^(?:нерабо|неиспр|ремонт|слома|поломк|сбо|завис|ошибк|почин|отремо|глюч|отказ|работа|включа|'
+                          r'загруж|подклю|доступ|недост|откры|печата|сканир|входит|заход)')
+
+
+def fault_objects(question):
+    """Object terms of a fault question ("лифт" in "не работает лифт"), or []."""
+    from .retrieval import focus_terms
+    if not re.search(FAULT, question.lower().replace('ё', 'е')):
+        return []
+    return [t for t in focus_terms(question) if not _FAULT_WORDS.match(t)]
+
+
+def mentions_object(question, text):
+    """A fault answer must name the faulty object, not only "неисправность"."""
+    objects = fault_objects(question)
+    if not objects:
+        return True
+    words = re.findall(r'[а-яёa-z0-9]+', text.lower().replace('ё', 'е'))
+    return any(w.startswith(t) for t in objects for w in words)
 
 
 def support_request(question):

@@ -75,8 +75,17 @@ def imported_parts(db, question):
     by_part = []
     rows = []
     oversized = False
+    from .support import ASK_CHANNEL, CHANNEL, mentions_object
     for part in parts:
         candidates = filter_sibling_cells(imported(db, part, k=3), part)
+        # A fault of an object the support module does not cover (a lift, a
+        # door) is answered only by text that names that object.
+        candidates = [r for r in candidates if mentions_object(part, r['text'])]
+        if ASK_CHANNEL.search(part):
+            # "Where/whom to report" needs a stated channel; a table cell
+            # without an address, portal or e-mail (e.g. a budget line about
+            # repairs) cannot answer it.
+            candidates = [r for r in candidates if not ('"type": "cell"' in (r['metadata'] or '') and not CHANNEL.search(r['text']))]
         oversized |= any(len(r['text']) > MAX_EXCERPT_CHARS and supports(part, r['text']) for r in candidates)
         # A title or heading identifies a document but is not an answer.
         accepted = [r for r in candidates if r['text'].strip() and len(r['text']) <= MAX_EXCERPT_CHARS
