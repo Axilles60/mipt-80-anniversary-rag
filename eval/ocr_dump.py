@@ -38,10 +38,10 @@ def pages_arg(value, count):
 
 
 def ocr_page(page, lang):
-    import fitz
+    from app.importer import ocr_dpi
     with tempfile.TemporaryDirectory() as tmp:
         image = Path(tmp) / 'page.png'
-        page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).save(str(image))
+        page.get_pixmap(dpi=ocr_dpi(), alpha=False).save(str(image))
         run = subprocess.run(['tesseract', str(image), 'stdout', '-l', lang], capture_output=True, text=True, encoding='utf-8')
         if run.returncode:
             return None, run.stderr.strip()[:300]

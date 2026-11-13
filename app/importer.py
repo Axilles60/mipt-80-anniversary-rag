@@ -90,6 +90,12 @@ def xlsx(raw):
                 out.append((f'sheet/{sheet.title}/cell/{cell.coordinate}', f'{sheet.title} {cell.coordinate} {value}' + (f' {saved}' if formula and saved is not None else ''), metadata))
     return out, ['XLSX: inferred headers and cached formula values require review']
 
+def ocr_dpi():
+    try:
+        return max(72, min(600, int(os.environ.get('NAVIGATOR_OCR_DPI', '400'))))
+    except ValueError:
+        return 400
+
 def pdf(raw):
     import fitz
     from PIL import Image
@@ -108,7 +114,10 @@ def pdf(raw):
         if needs_ocr:
             with tempfile.TemporaryDirectory() as tmp:
                 imagepath = Path(tmp)/'page.png'
-                page.get_pixmap(matrix=fitz.Matrix(2,2), alpha=False).save(str(imagepath))
+                # 144 dpi (the former Matrix(2,2)) downsamples typical scans and
+                # loses small table digits: 0/12 amounts on a scanned cost card
+                # versus 12/12 at 400 dpi.
+                page.get_pixmap(dpi=ocr_dpi(), alpha=False).save(str(imagepath))
                 osd = subprocess.run(['tesseract', str(imagepath), 'stdout', '--psm', '0'], capture_output=True, text=True)
                 match = re.search(r'Rotate:\s*(\d+)', osd.stdout)
                 rotation = int(match.group(1)) if match else None
