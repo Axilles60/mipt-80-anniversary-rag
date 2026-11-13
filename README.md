@@ -64,6 +64,24 @@ docker run --rm --network none --user "$(id -u):$(id -g)" -v "$(pwd)/data/index:
 
 Веб-измерение поиска по синтетическим импортированным документам, команды, результаты и оставшиеся ложные ответы: [eval/search-experiment.md](eval/search-experiment.md).
 
+### Гибридный поиск (необязательно, локально)
+
+По умолчанию поиск — BM25 (SQLite FTS5 с синонимами). Режим `NAVIGATOR_RETRIEVAL=hybrid` добавляет локальную многоязычную модель эмбеддингов: плотное ранжирование объединяется с BM25 через reciprocal rank fusion; фрагмент без общих слов с вопросом попадает в кандидаты, только если явно выделяется по близости (z-оценка ≥ 2.5, `NAVIGATOR_DENSE_MIN_Z`). `NAVIGATOR_RETRIEVAL=dense` — только плотный поиск (для сравнения). Вопросы и тексты не покидают машину; при отсутствии модели или библиотек сервис работает в BM25.
+
+Подготовка один раз, с сетью (модель в образ и в git не входит, ≈490 МБ):
+
+```sh
+pip install -r requirements-dense.txt
+mkdir -p data/models/multilingual-e5-small
+for f in model.onnx tokenizer.json tokenizer_config.json special_tokens_map.json config.json; do
+  curl -L --fail -o data/models/multilingual-e5-small/$f https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/onnx/$f
+done
+```
+
+Ожидаемый размер `model.onnx` — 470 268 510 байт. Другой путь к модели — `NAVIGATOR_EMBED_MODEL`. Дальше сеть не нужна: `NAVIGATOR_RETRIEVAL=hybrid python -m app embed` заранее кодирует фрагменты базы (иначе это происходит при первом вопросе; векторы хранятся в той же SQLite, новые документы кодируются по мере импорта без переиндексации остальных), затем `NAVIGATOR_RETRIEVAL=hybrid python -m app`. Контейнер не содержит этих библиотек и работает в BM25.
+
+Сравнение BM25 / dense / hybrid на вымышленном корпусе (`fixtures/hybrid`, настроечная и отложенная части): `python eval/measure_hybrid.py --split tuning --report eval/hybrid_results/<новый файл>.json` и то же с `--split holdout`. На отложенной части (20 вопросов, один прогон) гибрид против BM25: Recall@3 0.53→0.65, MRR 0.57→0.67, nDCG@5 0.58→0.68, верных ответов 9→11, пропусков 3→1, ложных ответов 5→5, время ответа 0.02→0.13 с. Таблица, разбор по вопросам и ограничения: [журнал качества, итерация 5](sdd/quality-progress.md). Порог откалиброван на синтетике; на реальном корпусе гибрид не проверен, поэтому он не включён по умолчанию.
+
 ## Проверка нового документа без внешней сети
 
 После сборки выполнить `docker run --rm --network none --entrypoint python employee-navigator:mvp /app/eval/offline_probe.py --mode extractive`. Команда создаёт синтетический DOCX и новую временную базу, импортирует документ, задаёт вопрос через веб и открывает ссылки. Сетевое пространство контейнера ограничено loopback; зависимости уже должны быть в образе. Метрики относятся к одному вымышленному вопросу.
