@@ -105,6 +105,30 @@
 
 **Изменённые файлы:** `app/procedures.py`, `app/retrieval.py`, `app/core.py`, `app/__main__.py`. **Новые:** `app/support.py`, `eval/synthetic_docs.py`, `eval/diagnose_staged.py`, `eval/web_harness.py`, `eval/measure_procedures.py`, `tests/test_trip_pages_web.py`, `tests/test_support_pages_web.py`, отчёты в `eval/end_to_end_results/` (`staged-trip-*`, `procedures-*`).
 
+## Перенос в Claude Code на Windows и сверка (2026-11-13)
+
+**Git.** Найденный репозиторий оказался домашней папкой пользователя без коммитов — коммитить туда нельзя. В папке проекта создан отдельный репозиторий; первый коммит `621d356` «Состояние после сессии в чате Claude (2026-11-13)» — без изменений файлов. `данные.zip` исключён из истории локально через `.git/info/exclude` (CASE-07: оригиналы не попадают в коммиты); сам архив не открывался и не изменялся. `data/originals/`, `data/index/`, `data/models/`, `data/runs/` и `.venv/` уже исключены `.gitignore`.
+
+**Окружение.** Windows 11, Python 3.12.10. `.venv` (macOS, Python 3.13) пересоздан: `python -m venv .venv && .venv\Scripts\python -m pip install -r requirements.txt` → PyMuPDF 1.28.2, openpyxl 3.1.5, Pillow 12.3.0. Ниже `PY` = `.venv\Scripts\python.exe`. Для вывода кириллицы в консоль: `$env:PYTHONIOENCODING='utf-8'`.
+
+**Ограничение: Tesseract не установлен** (нет ни `rus`, ни `eng`, ни самого `tesseract.exe` в PATH и стандартных папках). Не блокер для поиска и ответов, но OCR-импорт падает.
+
+**Повторный итоговый прогон на тех же синтетических данных:**
+
+| Проверка | Журнал (macOS/Linux) | Windows, сейчас | Причина расхождения |
+| --- | --- | --- | --- |
+| `PY -m unittest discover -s tests` | 55/55 OK | 53/55: `test_importer.test_batch_and_versions` (error=2 вместо 1), `test_context_web.test_context_through_import_and_web` (импорт завершился кодом 1) | Оба теста строят PDF-скан и вызывают `tesseract` (`app/importer.py:112,119`); бинарника нет → файл получает статус error. Код не менялся |
+| `PY eval/measure_end_to_end.py` | 10/10, 0/0/0 | 10/10, 0 ложных, 0 пропущенных, 0 ошибок цитирования | — |
+| `PY eval/measure_procedures.py --split all` | dev 5/5, holdout 9/9, holdout2 5/7, 1 ложный, 5 пропущенных | dev 5/5, holdout 9/9, holdout2 5/7, 1 ложный (Q03), 5 пропущенных (Q01), 0 ошибок цитирования, отказы 2/2 | — |
+
+Отчёт: `eval/end_to_end_results/procedures-windows-recheck-20261113.json`. Различий от ОС, версии PyMuPDF или переносов строк PDF не обнаружено.
+
+**Чтобы вернуть 55/55:** установить Tesseract для Windows (например, сборка UB Mannheim) с языками `rus`, `eng`, `osd` и добавить в PATH; затем `PY -m unittest tests.test_importer tests.test_context_web -v`.
+
+**Решение консультанта** зафиксировано как DEC-03 в `sdd/decisions.md`.
+
+**Следующий шаг — гибридный поиск (задача 4 пользователя).** Блокер для плотного поиска: в `data/models/` нужна локальная многоязычная модель эмбеддингов; скачивание модели требует разрешения пользователя. Без модели можно сразу сделать синтетический набор поиска и зафиксировать базовую линию BM25 (Recall@1/3/5, MRR, nDCG@5, правильные отказы).
+
 ## Следующие шаги
 
 1. **Q03 (ложный ответ).** Когда вопрос о сбое (`support.FAULT`) не распознан как обращение из‑за неизвестного устройства, не переходить к обычному поиску по бюджетным ячейкам: считать обращением любой вопрос «сбой + куда/как сообщить», а ячейки XLSX не выдавать как ответ на вопрос «куда обратиться». Добавить VPN/доступ/сервис к `DEVICE`. Проверка: `--split holdout2`, затем новый отложенный набор v3.
