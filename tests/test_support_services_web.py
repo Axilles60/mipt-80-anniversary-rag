@@ -59,5 +59,41 @@ class SupportServicesWebTest(unittest.TestCase):
         self.assertIn('Недостаточно данных', page)
 
 
+ACCOUNTS = [('Title', 'Регламент учётных записей (вымышленный)'),
+            'Восстановление пароля к корпоративной почте выполняется на странице самообслуживания id.example.invalid.',
+            'Если страница самообслуживания недоступна, работник звонит на внутренний номер 1234.']
+
+
+def build_without_regulation(root):
+    from synthetic_docs import PURCHASE_PAGES, SUPPORT_BUDGET, write_docx
+    return [write_docx(root / 'accounts.docx', ACCOUNTS), write_pdf(root / 'purchase.pdf', PURCHASE_PAGES),
+            write_xlsx(root / 'budget.xlsx', SUPPORT_BUDGET)]
+
+
+class NoSupportRegulationWebTest(unittest.TestCase):
+    """A fault report with no support regulation in the corpus."""
+    @classmethod
+    def setUpClass(cls):
+        cls.session = Session(build_without_regulation)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.session.close()
+
+    def test_service_document_still_answers(self):
+        # Known limit (journal, iteration 10): a recognised fault report such as
+        # "Нет доступа к корпоративной почте" gets a refusal when the corpus has
+        # no support regulation; falling back to general search let unrelated
+        # channels through (procedures holdout P07), so it was reverted.
+        page, _ = self.session.ask('Не открывается страница восстановления пароля, что делать?')
+        self.assertIn('номер 1234', page)
+
+    def test_purchase_channel_and_budget_are_not_fault_channels(self):
+        page, _ = self.session.ask('Сломался принтер, куда писать?')
+        self.assertNotIn('buy.example.invalid', page)
+        self.assertNotIn('подрядчиком', page)
+        self.assertIn('Недостаточно данных', page)
+
+
 if __name__ == '__main__':
     unittest.main()
