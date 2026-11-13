@@ -41,6 +41,9 @@ def imported(db,question,k=3):
     identifiers = [re.sub(r'\s+', '', x).replace('–','-') for x in re.findall(r'(?<!\d)\d{1,6}\s*[-–/]\s*(?:19|20)\d{2}(?!\d)', question)]
     years = re.findall(r'(?<!\d)(?:19|20)\d{2}(?!\d)', question) if not identifiers else []
     candidates = db.execute('SELECT f.* FROM import_fts x JOIN import_fragments f ON f.id=x.id WHERE import_fts MATCH ? ORDER BY bm25(import_fts),f.id', (q,))
+    from . import dense
+    if dense.mode() != 'bm25':
+        candidates = _with_dense(db, question, candidates.fetchall(), dense)
     result=[]
     for row in candidates:
         text=row['text'].lower().replace('–','-')
@@ -50,6 +53,30 @@ def imported(db,question,k=3):
         result.append(row)
         if len(result)>=k: break
     return result
+
+def _with_dense(db, question, lexical, dense):
+    """Dense-only or RRF-fused candidate order; BM25 order if the model is unavailable.
+
+    Hybrid: the dense ranking reorders all lexical candidates and may add
+    fragments without lexical overlap only if they clearly stand out (z)."""
+    scored = dense.rank(db, question)
+    if scored is None:
+        return lexical
+    threshold = dense.min_z()
+    standout = [fid for fid, _, z in scored if z is not None and z >= threshold][:dense.DEPTH]
+    if dense.mode() == 'dense':
+        order = standout
+    else:
+        lexical_ids = {r['id'] for r in lexical}
+        added = set(standout)
+        order = dense.fuse([r['id'] for r in lexical], [fid for fid, _, _ in scored if fid in lexical_ids or fid in added])
+    rows = {r['id']: r for r in lexical}
+    missing = [fid for fid in order if fid not in rows]
+    for start in range(0, len(missing), 500):
+        part = missing[start:start + 500]
+        for row in db.execute('SELECT * FROM import_fragments WHERE id IN (%s)' % ','.join('?' * len(part)), part):
+            rows[row['id']] = row
+    return [rows[fid] for fid in order if fid in rows]
 
 # These generic request words cannot by themselves identify a document's topic.
 _GENERIC = ('каки', 'куда', 'когда', 'заявк', 'докуме', 'срок', 'сведен',

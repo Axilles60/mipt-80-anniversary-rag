@@ -336,7 +336,7 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', nargs='?', choices=['serve', 'import-fixture', 'import', 'audit', 'load-evidence'], default='serve')
+    parser.add_argument('command', nargs='?', choices=['serve', 'import-fixture', 'import', 'audit', 'load-evidence', 'embed'], default='serve')
     parser.add_argument('paths', nargs='*')
     parser.add_argument('--manifest', default='sdd/sources/manifest.json')
     parser.add_argument('--report', help='Local JSON report path')
@@ -355,6 +355,14 @@ if __name__ == '__main__':
             init(db)
             load(db, json.loads(Path(args.paths[0]).read_text(encoding='utf-8')))
         print('Evidence catalogue loaded')
+    elif args.command == 'embed':
+        # Fill the local vector cache for dense/hybrid retrieval; texts stay local.
+        from . import dense
+        enc = dense.encoder()
+        if enc is None:
+            raise SystemExit('Dense model unavailable: ' + dense.status().get('fallback', 'set NAVIGATOR_EMBED_MODEL'))
+        with closing(connect(DB)) as db:
+            print(f'Embedded fragments: {dense.ensure_vectors(db, enc)} (model {enc.name})')
     elif args.command in ('import', 'audit'):
         import json
         from .importer import batch, audit
