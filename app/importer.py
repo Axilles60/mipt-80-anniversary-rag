@@ -183,6 +183,13 @@ def import_one(db, sid, name, raw):
                 db.execute('INSERT INTO import_fragments VALUES (?,?,?,?,?,?)', (fid,sid,version,locator,text,json.dumps(metadata,ensure_ascii=False,default=str)))
                 db.execute('INSERT INTO import_fts VALUES (?,?)', (fid,text))
             db.execute('INSERT INTO import_events(source_id,filename,sha256,status,detail) VALUES (?,?,?,?,?)', (sid,name,sha,status,json.dumps(notes,ensure_ascii=False)))
+        # RAG chunks of the new version (stage R1); a chunking failure does not
+        # undo the import — the chunks are rebuilt lazily on the next query.
+        try:
+            from .chunking import index_version
+            index_version(db, sid, version)
+        except Exception:
+            db.rollback()
         return status
     except Exception as exc:
         db.rollback()

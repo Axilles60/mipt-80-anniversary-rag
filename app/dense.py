@@ -154,50 +154,64 @@ def chunks(text):
     return out
 
 
-SCHEMA = '''CREATE TABLE IF NOT EXISTS import_vectors (
+SCHEMA = '''CREATE TABLE IF NOT EXISTS {table} (
     fragment_id TEXT, chunk INTEGER, model TEXT, vector BLOB,
     PRIMARY KEY(fragment_id, chunk, model))'''
+# What is embedded: imported fragments (iterations 5-7) or RAG chunks (stage R1).
+# The column `fragment_id` holds the unit ID in both tables.
+TARGETS = {
+    'fragments': {'table': 'import_vectors',
+                  'pending': 'SELECT f.id, f.text FROM import_fragments f WHERE NOT EXISTS '
+                             '(SELECT 1 FROM import_vectors v WHERE v.fragment_id=f.id AND v.model=?) ORDER BY f.rowid',
+                  'units': 'SELECT v.fragment_id, v.vector FROM import_vectors v JOIN import_fragments f ON f.id=v.fragment_id '
+                           'WHERE v.model=? AND v.vector IS NOT NULL ORDER BY f.rowid, v.chunk'},
+    'chunks': {'table': 'chunk_vectors',
+               'pending': "SELECT c.id, c.index_text FROM chunks c WHERE c.level=2 AND json_extract(c.meta, '$.kind') != 'toc' "
+                          'AND NOT EXISTS (SELECT 1 FROM chunk_vectors v WHERE v.fragment_id=c.id AND v.model=?) ORDER BY c.ord',
+               'units': 'SELECT v.fragment_id, v.vector FROM chunk_vectors v JOIN chunks c ON c.id=v.fragment_id '
+                        'WHERE v.model=? AND v.vector IS NOT NULL ORDER BY c.source_id, c.ord, v.chunk'},
+}
 
 
-def ensure_vectors(db, enc):
-    """Embed fragments that have no cached vector for this model; return count."""
+def ensure_vectors(db, enc, target='fragments'):
+    """Embed units that have no cached vector for this model; return count."""
+    spec = TARGETS[target]
     try:
-        db.execute(SCHEMA)
+        db.execute(SCHEMA.format(table=spec['table']))
         writable = True
     except sqlite3.OperationalError:
         writable = False
-    pending = db.execute(
-        'SELECT f.id, f.text FROM import_fragments f WHERE NOT EXISTS '
-        '(SELECT 1 FROM import_vectors v WHERE v.fragment_id=f.id AND v.model=?) ORDER BY f.rowid',
-        (enc.name,)).fetchall() if writable else []
+    try:
+        pending = db.execute(spec['pending'], (enc.name,)).fetchall() if writable else []
+    except sqlite3.OperationalError:
+        return 0  # e.g. no chunks table yet
     if not pending:
         return 0
     rows, texts = [], []
-    for fragment in pending:
-        parts = chunks(fragment['text'] or '')
+    for unit in pending:
+        parts = chunks(unit[1] or '')
         if not parts:
-            rows.append((fragment['id'], 0, None))  # marker: nothing to embed
+            rows.append((unit[0], 0, None))  # marker: nothing to embed
         for n, part in enumerate(parts):
-            rows.append((fragment['id'], n, len(texts)))
+            rows.append((unit[0], n, len(texts)))
             texts.append('passage: ' + part)
     vectors = enc.encode(texts) if texts else None
     with db:
-        db.executemany('INSERT OR REPLACE INTO import_vectors VALUES (?,?,?,?)',
+        db.executemany('INSERT OR REPLACE INTO ' + spec['table'] + ' VALUES (?,?,?,?)',
                        [(fid, n, enc.name, None if i is None else vectors[i].tobytes()) for fid, n, i in rows])
     return len(pending)
 
 
-def _matrix(db, enc):
+def _matrix(db, enc, target='fragments'):
     np = enc.np
+    spec = TARGETS[target]
     path = db.execute('PRAGMA database_list').fetchone()[2]
-    count = db.execute('SELECT count(*) FROM import_vectors WHERE model=?', (enc.name,)).fetchone()[0]
-    key = (path, enc.name)
+    count = db.execute('SELECT count(*) FROM ' + spec['table'] + ' WHERE model=?', (enc.name,)).fetchone()[0]
+    key = (path, enc.name, target)
     cached = _matrices.get(key)
     if cached and cached[0] == count:
         return cached[1], cached[2]
-    data = db.execute(
-        'SELECT v.fragment_id, v.vector FROM import_vectors v JOIN import_fragments f ON f.id=v.fragment_id '
-        'WHERE v.model=? AND v.vector IS NOT NULL ORDER BY f.rowid, v.chunk', (enc.name,)).fetchall()
+    data = db.execute(spec['units'], (enc.name,)).fetchall()
     ids = [r[0] for r in data]
     matrix = np.vstack([np.frombuffer(r[1], dtype=np.float32) for r in data]) if data else np.zeros((0, 1), np.float32)
     if path:
@@ -205,17 +219,17 @@ def _matrix(db, enc):
     return ids, matrix
 
 
-def rank(db, question):
-    """[(fragment_id, cosine, z)] best first, or None when dense search is unavailable.
+def rank(db, question, target='fragments'):
+    """[(unit_id, cosine, z)] best first, or None when dense search is unavailable.
 
-    z is the fragment's best cosine standardised over all fragments; it is
-    None when the corpus is smaller than MIN_POOL."""
+    z is the unit's best cosine standardised over all units; it is None when
+    the corpus is smaller than MIN_POOL."""
     enc = encoder()
     if enc is None:
         return None
     try:
-        ensure_vectors(db, enc)
-        ids, matrix = _matrix(db, enc)
+        ensure_vectors(db, enc, target)
+        ids, matrix = _matrix(db, enc, target)
     except sqlite3.OperationalError:
         return None
     if not ids:

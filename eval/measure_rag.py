@@ -266,6 +266,14 @@ def main():
                 unit_keys = {r['id']: keys_in(r['text'] or '', needles) for r in db.execute('SELECT id, text FROM import_fragments')}
                 ranked = {c['id']: [r['id'] for r in retrieval.imported(db, c['question'], k=10)] for c in cases}
                 rank = ranking(cases, ranked, unit_keys)
+                # The same questions over RAG chunks (stage R1–R2).
+                from app import chunk_search, chunking
+                chunking.ensure(db)
+                chunk_keys = {r['id']: keys_in(r['text'] or '', needles) for r in db.execute('SELECT id, text FROM chunks WHERE level=2')}
+                chunk_ranked = {c['id']: [r['id'] for r in chunk_search.search(db, c['question'], k=10, when=c.get('date') or None)]
+                                for c in cases}
+                rank = {**{'fragments.' + k: v for k, v in rank.items()},
+                        **{'chunks.' + k: v for k, v in ranking(cases, chunk_ranked, chunk_keys).items()}}
                 summary, results = answers(cases, dict(env, **flags), db, needles)
             for k, v in saved.items():
                 if v is None: os.environ.pop(k, None)
