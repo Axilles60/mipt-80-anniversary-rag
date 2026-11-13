@@ -251,8 +251,15 @@ class Handler(BaseHTTPRequestHandler):
                     if os.environ.get('NAVIGATOR_MODEL'):
                         from .local_model import answer as local_answer
                         generator = lambda rows: local_answer(question, rows, os.environ['NAVIGATOR_MODEL'])
-                    status, answer = form_answer(db, question, generator)
-                    staged_rows, missing_parts, _ = imported_parts(db, question) if status in ('imported', 'imported_partial', 'insufficient_procedure') else ([], [], False)
+                    when = fields.get('date', [''])[0] or None
+                    if when:
+                        from .evidence import iso
+                        iso(when)  # malformed date → ValueError → handled as a bad request below
+                    status, answer = form_answer(db, question, generator, when)
+                    version_notes = []
+                    has_imports = bool(db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='import_fragments'").fetchone())
+                    # Notes on excluded versions also explain an "insufficient" result.
+                    staged_rows, missing_parts, _ = imported_parts(db, question, when, version_notes) if has_imports and status in ('imported', 'imported_partial', 'insufficient_procedure', 'insufficient') else ([], [], False)
                     if status == 'support':
                         from .procedures import source_limits
                         cited = []
@@ -265,7 +272,9 @@ class Handler(BaseHTTPRequestHandler):
                         for unit in cited + [i for e in answer['extra'] for i in e['items']]:
                             r = db.execute('SELECT metadata FROM import_fragments WHERE id=?', (unit['id'],)).fetchone()
                             if r: import_meta[unit['id']] = json.loads(r['metadata'])
-                    import_meta = {}
+                    else:
+                        import_meta = {}  # (was reset unconditionally, dropping OCR notes of support citations)
+                    cited_labels = []
                     if status in ('imported', 'imported_partial'):
                         import json
                         for _, fid in answer:
@@ -278,6 +287,12 @@ class Handler(BaseHTTPRequestHandler):
                             r = db.execute('SELECT source_id, version FROM import_fragments WHERE id=?', (fid,)).fetchone()
                             if r: cited.append({'id': fid, 'text': text, 'source_id': r['source_id'], 'version': r['version']})
                         source_notes = source_limits(db, cited)
+                        # Requisites of the cited versions as stated in their texts.
+                        from .requisites import requisites as doc_requisites, label as requisites_label
+                        cited_labels = []
+                        for key in dict.fromkeys((c['source_id'], c['version']) for c in cited):
+                            name = db.execute('SELECT filename FROM imports WHERE source_id=? AND version=?', key).fetchone()
+                            cited_labels.append((name['filename'] if name else '', requisites_label(doc_requisites(db, *key))))
                 else:
                     content = self.form(question) + '<h2>Подтверждённые сведения</h2>'
                     def link(fid):
@@ -292,8 +307,11 @@ class Handler(BaseHTTPRequestHandler):
                         content += '<p>Обнаружено противоречие оснований; применимый вариант не установлен: ' + esc(', '.join(item['rules'])) + link(item['basis']) + '</p>'
                     return self.page(content)
             content = self.form(question)
+            def version_block():
+                return ''.join('<p>Ограничение: ' + esc(note) + (' ' + cite(fid) if fid else '') + '</p>'
+                               for note, fid in version_notes)
             if status == 'insufficient':
-                content += '<p>Недостаточно данных для ответа в доступных материалах.</p>'
+                content += '<p>Недостаточно данных для ответа в доступных материалах.</p>' + version_block()
             elif status == 'insufficient_procedure':
                 content += '<p>Недостаточно данных для частей вопроса: ' + esc('; '.join(missing_parts)) + '.</p>'
             elif status == 'insufficient_context':
@@ -303,7 +321,16 @@ class Handler(BaseHTTPRequestHandler):
             elif status in ('imported', 'imported_partial'):
                 if status == 'imported_partial':
                     content += '<p>Недостаточно данных для части вопроса: ' + esc('; '.join(missing_parts)) + '.</p>'
-                content += '<h2>Найденные фрагменты</h2><p>Применимость и полнота не проверены; дата вступления и связь редакций не подтверждены. Выбранная дата не определяет применимую редакцию. Сверьте источник.</p>'
+                content += '<h2>Найденные фрагменты</h2>'
+                if cited_labels and all(text for _, text in cited_labels):
+                    content += ('<p>Применимость и полнота проверены только по реквизитам и ссылкам в тексте импортированных '
+                                'документов' + (' на ' + esc(when) if when else ' на текущую дату') + '; сверьте источник.</p>')
+                else:
+                    content += '<p>Применимость и полнота не проверены; дата вступления и связь редакций не подтверждены. Выбранная дата не определяет применимую редакцию. Сверьте источник.</p>'
+                for name, text in cited_labels:
+                    if text:
+                        content += '<p>Источник: ' + esc((name + ' — ') if name else '') + esc(text) + ' (по тексту документа).</p>'
+                content += version_block()
                 from .procedures import staged, stage, CONDITION
                 def import_link(fragment_id, item=None):
                     return ''.join(' <em>' + esc(note) + '</em>' for note in import_notes(import_meta.get(fragment_id, {}))) + cite(fragment_id, item)

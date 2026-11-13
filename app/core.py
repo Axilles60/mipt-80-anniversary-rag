@@ -43,9 +43,20 @@ def search(db, question):
     from .retrieval import retrieve
     return retrieve(db, question, 10)
 
-def imported_parts(db, question):
-    """Retrieve and check each part, then report the parts not represented in k."""
+def imported_parts(db, question, when=None, notes=None):
+    """Retrieve and check each part, then report the parts not represented in k.
+
+    ``when``: ISO date of the question (or None for now). Versions repealed or
+    not yet in force on that date by their own texts are not used; the reasons
+    are appended to ``notes`` as (text, basis fragment id)."""
     from .retrieval import imported, filter_sibling_cells, coherent_candidates, heading_only
+    from .requisites import applicable
+    notes = [] if notes is None else notes
+    def usable(rows):
+        kept, why = applicable(db, rows, when)
+        for note in why:
+            if note not in notes: notes.append(note)
+        return kept
     from .sufficiency import supports
     from .questions import split_question
     from .procedures import staged
@@ -60,7 +71,9 @@ def imported_parts(db, question):
         rows += [item for extra in support['extra'] for item in extra['items']]
         missing = list(support['gaps']) + [m for source in support['sources'] for m in source['missing']]
         return rows, missing, False
-    coherent = coherent_candidates(db, question, parts)
+    coherent = coherent_candidates(db, question, parts, when)
+    if coherent:
+        coherent = usable(coherent)
     if coherent:
         from .procedures import staged, missing as missing_facets
         if staged(question):
@@ -78,6 +91,11 @@ def imported_parts(db, question):
     from .support import ASK_CHANNEL, CHANNEL, mentions_object
     for part in parts:
         candidates = filter_sibling_cells(imported(db, part, k=3), part)
+        kept = usable(candidates)
+        if len(kept) < len(candidates):
+            # An excluded version must not shrink k: look further down the ranking.
+            kept = usable(filter_sibling_cells(imported(db, part, k=12), part))[:3]
+        candidates = kept
         # A fault of an object the support module does not cover (a lift, a
         # door) is answered only by text that names that object.
         candidates = [r for r in candidates if mentions_object(part, r['text'])]
@@ -99,7 +117,7 @@ def imported_parts(db, question):
     missing = [part for part, accepted in by_part if not any(row['id'] in selected for row in accepted)]
     return rows, missing, oversized
 
-def form_answer(db, question, generator=None):
+def form_answer(db, question, generator=None, when=None):
     """Generator hook receives only retrieved rows; future implementations must validate citations."""
     if not question.strip():
         return 'empty', []
@@ -124,7 +142,7 @@ def form_answer(db, question, generator=None):
             if support['sources'] or any(extra['items'] for extra in support['extra']):
                 return 'support', support
             return 'insufficient', []
-        rows, missing, oversized = imported_parts(db, question)
+        rows, missing, oversized = imported_parts(db, question, when)
         if rows:
             from .procedures import staged
             if generator is not None and not staged(question):

@@ -128,7 +128,7 @@ def focus_terms(question):
 
 # Fault reports (formerly support_request/support_candidates) live in app/support.py.
 
-def coherent_candidates(db, question, parts):
+def coherent_candidates(db, question, parts, when=None):
     """Prefer a clearly anchored source for generic subquestions, never merge versions."""
     from .sufficiency import supports
     from .procedures import staged, stage
@@ -150,6 +150,12 @@ def coherent_candidates(db, question, parts):
                 cache[key] = [u for u in version_units(db, *key, events=events) if u['stage'] and (u['facets'] or u['condition'] or u['marked'] or u['step'])]
             return cache[key]
         grouped = {key: rows for key, rows in grouped.items() if staged_units(key)}
+    if grouped:
+        # Versions repealed or not yet in force on the date (by their own texts)
+        # do not compete for the answer.
+        from .requisites import status as version_status
+        states = version_status(db, list(grouped), when)
+        grouped = {key: rows for key, rows in grouped.items() if states[key][0] in ('ok', 'uncertain')}
     if not grouped: return None
     def strength(rows):
         words=re.findall(r'[а-яa-z0-9]+',' '.join(r['text'] for r in rows).lower().replace('ё','е'))
