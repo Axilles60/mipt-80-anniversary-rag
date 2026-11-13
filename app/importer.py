@@ -92,9 +92,9 @@ def xlsx(raw):
 
 def ocr_dpi():
     try:
-        return max(72, min(600, int(os.environ.get('NAVIGATOR_OCR_DPI', '400'))))
+        return max(72, min(600, int(os.environ.get('NAVIGATOR_OCR_DPI', '300'))))
     except ValueError:
-        return 400
+        return 300
 
 def pdf(raw):
     import fitz
@@ -115,8 +115,8 @@ def pdf(raw):
             with tempfile.TemporaryDirectory() as tmp:
                 imagepath = Path(tmp)/'page.png'
                 # 144 dpi (the former Matrix(2,2)) downsamples typical scans and
-                # loses small table digits: 0/12 amounts on a scanned cost card
-                # versus 12/12 at 400 dpi.
+                # loses small table digits. Synthetic scans (eval/measure_ocr_dpi.py):
+                # exact amounts 64/108 at 144 dpi, 107/108 at 300, 97/108 at 400.
                 page.get_pixmap(dpi=ocr_dpi(), alpha=False).save(str(imagepath))
                 osd = subprocess.run(['tesseract', str(imagepath), 'stdout', '--psm', '0'], capture_output=True, text=True)
                 match = re.search(r'Rotate:\s*(\d+)', osd.stdout)
