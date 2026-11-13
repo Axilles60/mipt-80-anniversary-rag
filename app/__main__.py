@@ -381,4 +381,8 @@ if __name__ == '__main__':
         if args.command == 'import' and result.get('error', 0):
             raise SystemExit(1)
     else:
+        # NAVIGATOR_IMPORT_DIR: import the documents of that folder first (the
+        # container sets /data/originals), then serve.
+        from .autoimport import from_environment
+        from_environment(DB, log=lambda message: print(message, flush=True))
         HTTPServer((os.environ.get('HOST', '127.0.0.1'), int(os.environ.get('PORT', '8000'))), Handler).serve_forever()

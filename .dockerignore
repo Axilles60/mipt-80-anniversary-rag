@@ -1,6 +1,9 @@
 **
 !Dockerfile
 !requirements.txt
+!requirements-dense.txt
+!tools/
+!tools/**
 !app/
 !app/**
 !fixtures/

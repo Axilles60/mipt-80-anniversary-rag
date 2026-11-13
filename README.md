@@ -1,23 +1,32 @@
 # Навигатор сотрудника
 
-Конкурсный прототип пока **не готов к приёмке по реальному корпусу**: интерфейс отвечает по вымышленной фикстуре техподдержки и курируемому учебному каталогу, импортированные фрагменты доступны как извлекающие ответы; применимость проверяется только при наличии курируемых правил, полнота не гарантирована. Оригиналы и выведенные из них сведения в этой поставке не используются. Актуальные ограничения и статус критериев: [матрица приёмки](eval/acceptance-matrix.md).
+Сотрудник задаёт вопрос — сервис находит документы и пункты, собирает ответ из их текста (шаги по этапам для процедур, каналы и состав обращения, ограничения источника) и показывает ссылки на фрагменты с выделенным пунктом; если данных нет — прямо сообщает об этом. Документы импортируются кодом при старте контейнера. Качество проверено на вымышленных документах; на реальном корпусе его подтверждает владелец (см. [метрики на оригиналах](eval/owner-acceptance.md)). Применимость редакций по датам проверяется только при наличии курируемых правил. Актуальные ограничения и статус критериев: [матрица приёмки](eval/acceptance-matrix.md).
 
-## Среда и контейнер
+## Запуск: исходные документы + Docker
 
-Нужны Docker Engine с доступом к интернету для первоначальной сборки, около 3 ГБ свободного места как предварительная оценка, и локальное хранилище под документы и индекс. Точные требования к модели и целевой машине ещё не измерены. Образ устанавливает Python 3.13, SQLite с FTS5, Tesseract с `rus`, `eng`, `osd` и зависимости из `requirements.txt`. Приложение состоит из одного сервиса; Compose не нужен. Реальные документы, индекс и модели не входят в образ.
+Всё — извлечение текста и таблиц, OCR сканов, разбиение на фрагменты, индекс и поиск — выполняет код в контейнере при старте; внешних сервисов нет, документы и вопросы не покидают машину. Нужен Docker Engine (интернет — только для сборки образа), около 3 ГБ места. Образ: Python 3.13, SQLite с FTS5, Tesseract `rus`/`eng`/`osd`, зависимости из `requirements.txt`. Один сервис; Compose не нужен. Документы и индекс в образ не входят.
 
-Из корня проекта. Команды используют отдельную учебную базу `data/index/demo`; не направляйте их в существующую рабочую базу: `load-evidence` заменяет курируемый каталог.
+1. Положите документы (PDF, DOCX, XLSX или ZIP с ними, можно во вложенных папках) в `data/originals/`.
+2. Соберите и запустите (из корня проекта):
 
 ```sh
-mkdir -p data/index/demo data/originals data/models data/runs
-docker build -t employee-navigator:mvp .
-docker run --rm --network none --user "$(id -u):$(id -g)" -v "$(pwd)/data/index/demo:/data/index" employee-navigator:mvp import-fixture
-docker run --rm --network none --user "$(id -u):$(id -g)" -v "$(pwd)/data/index/demo:/data/index" employee-navigator:mvp load-evidence fixtures/evidence/synthetic.json
-docker run -d --name employee-navigator --user "$(id -u):$(id -g)" -p 127.0.0.1:8000:8000 -v "$(pwd)/data/index/demo:/data/index" -v "$(pwd)/data/originals:/data/originals:ro" -v "$(pwd)/data/models:/data/models:ro" -v "$(pwd)/data/runs:/data/runs" employee-navigator:mvp
+mkdir -p data/originals data/index
+docker build -t employee-navigator .
+docker run --rm --name employee-navigator -p 127.0.0.1:8000:8000 \
+  --user "$(id -u):$(id -g)" \
+  -v "$(pwd)/data/originals:/data/originals:ro" -v "$(pwd)/data/index:/data/index" \
+  employee-navigator
 ```
 
-Открыть http://127.0.0.1:8000/. Остановить и удалить контейнер: `docker stop employee-navigator && docker rm employee-navigator`. База остаётся в `data/index/demo/`. Для чистой проверки задайте пустую локальную папку индекса и подставьте её вместо `data/index/demo` во всех командах; существующую базу не удаляйте. Проверка: `python3 eval/check_demo.py --report data/runs/demo-check.json`; модульные проверки: `docker run --rm --entrypoint python employee-navigator:mvp -m unittest discover -s tests -v`. Автоматическая проверка отправляет только вымышленные данные и проверяет HTML-форму, два источника и отсутствие данных для постороннего вопроса.
+Windows PowerShell: `docker run --rm --name employee-navigator -p 127.0.0.1:8000:8000 -v "${PWD}\data\originals:/data/originals:ro" -v "${PWD}\data\index:/data/index" employee-navigator`.
 
+3. Дождитесь в журнале строк `Import: N file(s)` и `Import finished …: ok …, review …, error …`, откройте http://127.0.0.1:8000/. Остановка: `Ctrl+C` или `docker stop employee-navigator`.
+
+При следующем запуске с тем же `data/index` неизменённые файлы пропускаются по контрольной сумме (`unchanged`); изменённый файл становится новой версией, новый — добавляется, без правки кода. Повреждённый или неподдерживаемый файл получает статус `error` с причиной и не мешает остальным. Без тома `data/index` индекс строится заново при каждом старте. Необязательный реестр с ID документов: `-v "$(pwd)/sdd/sources/manifest.json:/app/manifest.json:ro" -e NAVIGATOR_MANIFEST=/app/manifest.json`.
+
+**Гибридный поиск (необязательно).** `docker build --build-arg WITH_DENSE=1 --build-arg RETRIEVAL=hybrid -t employee-navigator:hybrid .` — при сборке скачивается открытая модель `multilingual-e5-small` (ONNX, ≈490 МБ) с проверкой контрольных сумм (`tools/fetch_model.py`); при старте фрагменты кодируются локально. Без этого — BM25.
+
+Проверки внутри образа: `docker run --rm --network none --entrypoint python employee-navigator -m unittest discover -s tests -v`; учебный каталог и вымышленная фикстура для показа без реальных документов: `import-fixture`, `load-evidence fixtures/evidence/synthetic.json` (используйте отдельную папку индекса: `load-evidence` заменяет каталог).
 ### Локальный импорт для владельца данных
 
 Поместите архив в `data/originals/`. Пример для локального реестра и архива, без сети на время импорта:
@@ -31,9 +40,9 @@ docker run --rm --network none --user "$(id -u):$(id -g)" -v "$(pwd)/data/index:
 
 ### Переменные и локальная модель
 
-`NAVIGATOR_DB` — путь SQLite (в контейнере `/data/index/navigator.sqlite3`); `NAVIGATOR_OCR_LANG` — языки Tesseract (по умолчанию `rus+eng`); `HOST` — адрес прослушивания (`127.0.0.1` вне контейнера, `0.0.0.0` внутри); `PORT` — порт (8000); `NAVIGATOR_MODEL` — необязательное имя модели Ollama. Публикуйте порт только на localhost: аутентификации в прототипе нет. Переменных секретов нет.
+`NAVIGATOR_DB` — путь SQLite (в контейнере `/data/index/navigator.sqlite3`); `NAVIGATOR_IMPORT_DIR` — папка, импортируемая при старте (в контейнере `/data/originals`; вне контейнера по умолчанию не задана); `NAVIGATOR_MANIFEST` — необязательный реестр ID документов; `NAVIGATOR_RETRIEVAL` — `bm25` (по умолчанию), `hybrid` или `dense`; `NAVIGATOR_EMBED_MODEL` — папка модели эмбеддингов; `NAVIGATOR_DENSE_MIN_Z`, `NAVIGATOR_DENSE_GATE_Z` — пороги гибрида (2.5 и 1.2); `NAVIGATOR_OCR_DPI` — разрешение рендера страниц для OCR (300); `NAVIGATOR_OCR_LANG` — языки Tesseract (по умолчанию `rus+eng`); `HOST` — адрес прослушивания (`127.0.0.1` вне контейнера, `0.0.0.0` внутри); `PORT` — порт (8000); `NAVIGATOR_MODEL` — необязательное имя модели Ollama. Публикуйте порт только на localhost: аутентификации в прототипе нет. Переменных секретов нет.
 
-Модель не входит в образ. Для запуска вне контейнера установите Python 3.11+, Tesseract с языками `rus`, `eng`, `osd` и зависимости: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`. На локальной машине Ollama можно заранее установить и загрузить `ollama pull qwen2.5:0.5b`; запустить эксперимент вне контейнера с `NAVIGATOR_MODEL=qwen2.5:0.5b .venv/bin/python -m app`. Адаптер подключается только к `127.0.0.1:11434`, поэтому модель на хосте не доступна контейнеру автоматически. Подключение Ollama к контейнерному сервису не подготовлено; контейнерный демонстрационный сценарий использует извлечение без модели. Каталог `data/models` доступен в контейнере только для чтения, но сам Ollama пока не использует его автоматически. Реальный запуск модели не выполнен. Извлекающий режим проверен в контейнере с `--network none`.
+Модель не входит в образ. Для запуска вне контейнера установите Python 3.11+, Tesseract с языками `rus`, `eng`, `osd` и зависимости: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`. На локальной машине Ollama можно заранее установить и загрузить `ollama pull qwen2.5:0.5b`; запустить эксперимент вне контейнера с `NAVIGATOR_MODEL=qwen2.5:0.5b .venv/bin/python -m app`. Адаптер подключается только к `127.0.0.1:11434`, поэтому модель на хосте не доступна контейнеру автоматически. Подключение Ollama к контейнерному сервису не подготовлено; контейнерный демонстрационный сценарий использует извлечение без модели. Реальный запуск модели не выполнен. Извлекающий режим проверен в контейнере с `--network none`.
 
 ## Воспроизводимые сценарии
 
