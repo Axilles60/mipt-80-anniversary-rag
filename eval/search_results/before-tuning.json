@@ -1,0 +1,101 @@
+{
+  "k": 3,
+  "cases": 7,
+  "expected_fragments": 5,
+  "found": 5,
+  "negative_cases": 2,
+  "false_positive": 1,
+  "exact_failures": 1,
+  "results": [
+    {
+      "id": "T01",
+      "type": "positive",
+      "expected": [
+        "IT21"
+      ],
+      "retrieved": [
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "T02",
+      "type": "positive",
+      "expected": [
+        "FLS"
+      ],
+      "retrieved": [
+        "FLS"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "T03",
+      "type": "positive",
+      "expected": [
+        "EST"
+      ],
+      "retrieved": [
+        "EST",
+        "FLS"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "T04",
+      "type": "positive",
+      "expected": [
+        "TRIP"
+      ],
+      "retrieved": [
+        "TRIP"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "T05",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": true,
+      "forbidden": []
+    },
+    {
+      "id": "T06",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "T07",
+      "type": "exact",
+      "expected": [
+        "IT17"
+      ],
+      "retrieved": [
+        "IT17",
+        "FLS",
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [
+        "IT21"
+      ]
+    }
+  ]
+}

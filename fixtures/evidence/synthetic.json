@@ -1,0 +1,274 @@
+{
+  "documents": [
+    {
+      "id": "A",
+      "title": "Вымышленный порядок А",
+      "signed": "2020-01-01",
+      "effective": "2020-01-01",
+      "valid_from": "2020-01-01",
+      "valid_to": null,
+      "approval": "confirmed"
+    },
+    {
+      "id": "B",
+      "title": "Вымышленное изменение",
+      "signed": "2022-01-01",
+      "effective": "2022-01-01",
+      "valid_from": "2022-01-01",
+      "valid_to": null,
+      "approval": "confirmed"
+    },
+    {
+      "id": "C",
+      "title": "Вымышленное положение",
+      "signed": "2021-01-01",
+      "effective": "2021-01-01",
+      "valid_from": "2021-01-01",
+      "valid_to": null,
+      "approval": "confirmed"
+    },
+    {
+      "id": "FORM",
+      "title": "Вымышленная форма",
+      "signed": "2020-01-01",
+      "effective": "2020-01-01",
+      "valid_from": "2020-01-01",
+      "valid_to": null,
+      "approval": "confirmed"
+    },
+    {
+      "id": "TRIP",
+      "title": "Вымышленная поездка",
+      "signed": "2020-01-01",
+      "effective": "2020-01-01",
+      "valid_from": "2020-01-01",
+      "valid_to": null,
+      "approval": "incomplete"
+    },
+    {
+      "id": "MISSING",
+      "title": "Упоминание приложения",
+      "signed": "2020-01-01",
+      "effective": "2020-01-01",
+      "valid_from": "2020-01-01",
+      "valid_to": null,
+      "approval": "confirmed"
+    }
+  ],
+  "fragments": [
+    {
+      "id": "A1",
+      "document_id": "A",
+      "locator": "п. 1",
+      "text": "Заявку направляют в вымышленное подразделение А."
+    },
+    {
+      "id": "A2",
+      "document_id": "A",
+      "locator": "п. 2",
+      "text": "Срок подготовки заявки — 10 дней."
+    },
+    {
+      "id": "B1",
+      "document_id": "B",
+      "locator": "п. 1",
+      "text": "Срок подготовки заявки изменён на 5 дней."
+    },
+    {
+      "id": "C1",
+      "document_id": "C",
+      "locator": "п. 1",
+      "text": "Для категории Б срок — 7 дней."
+    },
+    {
+      "id": "C2",
+      "document_id": "C",
+      "locator": "п. 2",
+      "text": "Для категории Б срок — 9 дней."
+    },
+    {
+      "id": "F1",
+      "document_id": "FORM",
+      "locator": "ячейка A1",
+      "text": "Образец формы: 99 дней."
+    },
+    {
+      "id": "T1",
+      "document_id": "TRIP",
+      "locator": "п. 1",
+      "text": "До поездки направить вымышленную заявку."
+    },
+    {
+      "id": "T2",
+      "document_id": "TRIP",
+      "locator": "п. 2",
+      "text": "После поездки представить отчёт."
+    },
+    {
+      "id": "M1",
+      "document_id": "MISSING",
+      "locator": "п. 1",
+      "text": "Упоминается недоступное приложение."
+    }
+  ],
+  "rules": [
+    {
+      "id": "r1",
+      "document_id": "A",
+      "fragment_id": "A1",
+      "topic": "application",
+      "kind": "norm",
+      "start": "2020-01-01",
+      "end": null,
+      "conditions": {},
+      "exceptions": {}
+    },
+    {
+      "id": "r2",
+      "document_id": "A",
+      "fragment_id": "A2",
+      "topic": "application",
+      "kind": "norm",
+      "start": "2020-01-01",
+      "end": null,
+      "conditions": {
+        "категория": "А"
+      },
+      "exceptions": {}
+    },
+    {
+      "id": "r3",
+      "document_id": "B",
+      "fragment_id": "B1",
+      "topic": "application",
+      "kind": "norm",
+      "start": "2022-01-01",
+      "end": null,
+      "conditions": {
+        "категория": "А"
+      },
+      "exceptions": {}
+    },
+    {
+      "id": "r4",
+      "document_id": "C",
+      "fragment_id": "C1",
+      "topic": "application",
+      "kind": "norm",
+      "start": "2021-01-01",
+      "end": null,
+      "conditions": {
+        "категория": "Б"
+      },
+      "exceptions": {}
+    },
+    {
+      "id": "r5",
+      "document_id": "C",
+      "fragment_id": "C2",
+      "topic": "application",
+      "kind": "norm",
+      "start": "2021-01-01",
+      "end": null,
+      "conditions": {
+        "категория": "Б"
+      },
+      "exceptions": {}
+    },
+    {
+      "id": "r6",
+      "document_id": "FORM",
+      "fragment_id": "F1",
+      "topic": "application",
+      "kind": "form",
+      "start": "2020-01-01",
+      "end": null,
+      "conditions": {},
+      "exceptions": {}
+    },
+    {
+      "id": "r7",
+      "document_id": "TRIP",
+      "fragment_id": "T1",
+      "topic": "travel",
+      "kind": "norm",
+      "start": "2020-01-01",
+      "end": null,
+      "conditions": {},
+      "exceptions": {}
+    },
+    {
+      "id": "r8",
+      "document_id": "TRIP",
+      "fragment_id": "T2",
+      "topic": "travel",
+      "kind": "norm",
+      "start": "2020-01-01",
+      "end": null,
+      "conditions": {},
+      "exceptions": {}
+    }
+  ],
+  "topics": [
+    {
+      "id": "application",
+      "keywords": [
+        "заявк",
+        "порядок"
+      ]
+    },
+    {
+      "id": "travel",
+      "keywords": [
+        "поездк",
+        "командировк"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel1",
+      "kind": "amends_rule",
+      "origin": "r3",
+      "target": "r2",
+      "basis": "B1"
+    },
+    {
+      "id": "rel2",
+      "kind": "conflict",
+      "origin": "r4",
+      "target": "r5",
+      "basis": "C1"
+    },
+    {
+      "id": "rel3",
+      "kind": "gap",
+      "origin": "B",
+      "target": "A",
+      "basis": "B1"
+    },
+    {
+      "id": "rel4",
+      "kind": "attachment",
+      "origin": "TRIP",
+      "target": "MISSING",
+      "basis": "M1"
+    }
+  ],
+  "limits": [
+    {
+      "id": "gap",
+      "document_id": "B",
+      "topic": "application",
+      "description": "Цепочка редакций неполна; промежуточная редакция отсутствует.",
+      "basis": "B1"
+    },
+    {
+      "id": "missing",
+      "document_id": "TRIP",
+      "topic": "travel",
+      "description": "Упомянутое приложение отсутствует.",
+      "basis": "M1"
+    }
+  ]
+}

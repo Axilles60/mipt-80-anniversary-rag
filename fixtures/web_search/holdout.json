@@ -1,0 +1,14 @@
+[
+ {"id":"H01","question":"Сломался принтер, куда написать?","expected":["IT21"],"type":"positive"},
+ {"id":"H02","question":"Как зарегистрировать финансовый лицевой счет?","expected":["FLS"],"type":"positive"},
+ {"id":"H03","question":"Кто утверждает смету проекта?","expected":["EST"],"type":"positive"},
+ {"id":"H04","question":"Как согласовать служебную поездку?","expected":["TRIP"],"type":"positive"},
+ {"id":"H05","question":"Как забронировать конференц-зал?","expected":["HALL"],"type":"positive"},
+ {"id":"H06","question":"Открыть ФЛС и согласовать смету расходов","expected":["FLS","EST"],"type":"compound"},
+ {"id":"H07","question":"Кто оплачивает ремонт принтера?","expected":[],"type":"negative"},
+ {"id":"H08","question":"Как отменить бронирование конференц-зала?","expected":[],"type":"negative"},
+ {"id":"H09","question":"Как проверить погоду на Марсе?","expected":[],"type":"negative"},
+ {"id":"H10","question":"Приказ 47-2021","expected":["IT21"],"type":"exact","forbidden":["IT17"]},
+ {"id":"H11","question":"Регламент 93-2024","expected":["TRIP"],"type":"exact"},
+ {"id":"H12","question":"Приказ 47-2017","expected":["IT17"],"type":"exact","forbidden":["IT21"]}
+]

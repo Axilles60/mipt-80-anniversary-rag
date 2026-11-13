@@ -1,0 +1,145 @@
+{
+  "k": 3,
+  "cases": 10,
+  "expected_fragments": 6,
+  "found": 6,
+  "negative_cases": 4,
+  "false_positive": 3,
+  "exact_failures": 0,
+  "results": [
+    {
+      "id": "S01",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": true,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S02",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [
+        "HALL",
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": true,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S03",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [
+        "HALL"
+      ],
+      "missing": [],
+      "false_positive": true,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S04",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [],
+      "insufficient": true
+    },
+    {
+      "id": "S05",
+      "type": "positive",
+      "expected": [
+        "FLS"
+      ],
+      "retrieved": [
+        "FLS",
+        "TRIP"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S06",
+      "type": "positive",
+      "expected": [
+        "HALL"
+      ],
+      "retrieved": [
+        "HALL",
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S07",
+      "type": "positive",
+      "expected": [
+        "EST"
+      ],
+      "retrieved": [
+        "EST",
+        "TRIP"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S08",
+      "type": "positive",
+      "expected": [
+        "TRIP"
+      ],
+      "retrieved": [
+        "TRIP"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S09",
+      "type": "exact",
+      "expected": [
+        "EST"
+      ],
+      "retrieved": [
+        "EST"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [],
+      "insufficient": false
+    },
+    {
+      "id": "S10",
+      "type": "partial",
+      "expected": [
+        "HALL"
+      ],
+      "retrieved": [
+        "HALL"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [],
+      "insufficient": false
+    }
+  ]
+}

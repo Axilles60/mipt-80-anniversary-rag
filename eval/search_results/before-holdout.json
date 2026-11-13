@@ -1,0 +1,171 @@
+{
+  "k": 3,
+  "cases": 12,
+  "expected_fragments": 10,
+  "found": 10,
+  "negative_cases": 3,
+  "false_positive": 2,
+  "exact_failures": 2,
+  "results": [
+    {
+      "id": "H01",
+      "type": "positive",
+      "expected": [
+        "IT21"
+      ],
+      "retrieved": [
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H02",
+      "type": "positive",
+      "expected": [
+        "FLS"
+      ],
+      "retrieved": [
+        "FLS"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H03",
+      "type": "positive",
+      "expected": [
+        "EST"
+      ],
+      "retrieved": [
+        "EST"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H04",
+      "type": "positive",
+      "expected": [
+        "TRIP"
+      ],
+      "retrieved": [
+        "TRIP",
+        "EST"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H05",
+      "type": "positive",
+      "expected": [
+        "HALL"
+      ],
+      "retrieved": [
+        "HALL"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H06",
+      "type": "compound",
+      "expected": [
+        "FLS",
+        "EST"
+      ],
+      "retrieved": [
+        "FLS",
+        "EST",
+        "TRIP"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H07",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": true,
+      "forbidden": []
+    },
+    {
+      "id": "H08",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [
+        "HALL"
+      ],
+      "missing": [],
+      "false_positive": true,
+      "forbidden": []
+    },
+    {
+      "id": "H09",
+      "type": "negative",
+      "expected": [],
+      "retrieved": [],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H10",
+      "type": "exact",
+      "expected": [
+        "IT21"
+      ],
+      "retrieved": [
+        "IT21",
+        "FLS",
+        "IT17"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [
+        "IT17"
+      ]
+    },
+    {
+      "id": "H11",
+      "type": "exact",
+      "expected": [
+        "TRIP"
+      ],
+      "retrieved": [
+        "TRIP"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "H12",
+      "type": "exact",
+      "expected": [
+        "IT17"
+      ],
+      "retrieved": [
+        "IT17",
+        "FLS",
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": [
+        "IT21"
+      ]
+    }
+  ]
+}

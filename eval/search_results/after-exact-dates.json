@@ -1,0 +1,63 @@
+{
+  "k": 3,
+  "cases": 4,
+  "expected_fragments": 4,
+  "found": 4,
+  "negative_cases": 0,
+  "false_positive": 0,
+  "exact_failures": 0,
+  "results": [
+    {
+      "id": "X01",
+      "type": "exact",
+      "expected": [
+        "IT17"
+      ],
+      "retrieved": [
+        "IT17"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "X02",
+      "type": "exact",
+      "expected": [
+        "IT21"
+      ],
+      "retrieved": [
+        "IT21"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "X03",
+      "type": "exact",
+      "expected": [
+        "EST"
+      ],
+      "retrieved": [
+        "EST"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    },
+    {
+      "id": "X04",
+      "type": "exact",
+      "expected": [
+        "FLS"
+      ],
+      "retrieved": [
+        "FLS"
+      ],
+      "missing": [],
+      "false_positive": false,
+      "forbidden": []
+    }
+  ]
+}

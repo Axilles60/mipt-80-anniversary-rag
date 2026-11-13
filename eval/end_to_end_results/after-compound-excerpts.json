@@ -1,0 +1,160 @@
+{
+  "mode": "extractive",
+  "data": "synthetic",
+  "totals": {
+    "cases": 10,
+    "correct_answers": 10,
+    "false_answers": 0,
+    "missing_facts": 0,
+    "citation_errors": 0
+  },
+  "sets": {
+    "tuning": {
+      "cases": 5,
+      "correct_answers": 5,
+      "false_answers": 0,
+      "missing_facts": 0,
+      "citation_errors": 0,
+      "results": [
+        {
+          "id": "T01",
+          "expected_status": "answer",
+          "actual_status": "answer",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "SIMILAR"
+          ]
+        },
+        {
+          "id": "T02",
+          "expected_status": "answer",
+          "actual_status": "answer",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "OLD1",
+            "OLD2"
+          ]
+        },
+        {
+          "id": "T03",
+          "expected_status": "answer",
+          "actual_status": "answer",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "EXCEPTION"
+          ]
+        },
+        {
+          "id": "T04",
+          "expected_status": "partial",
+          "actual_status": "partial",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "NEW1",
+            "OLD2"
+          ]
+        },
+        {
+          "id": "T05",
+          "expected_status": "insufficient",
+          "actual_status": "insufficient",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": []
+        }
+      ]
+    },
+    "holdout": {
+      "cases": 5,
+      "correct_answers": 5,
+      "false_answers": 0,
+      "missing_facts": 0,
+      "citation_errors": 0,
+      "results": [
+        {
+          "id": "H01",
+          "expected_status": "answer",
+          "actual_status": "answer",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "SIMILAR"
+          ]
+        },
+        {
+          "id": "H02",
+          "expected_status": "answer",
+          "actual_status": "answer",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "NEW1",
+            "OLD2"
+          ]
+        },
+        {
+          "id": "H03",
+          "expected_status": "answer",
+          "actual_status": "answer",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "GENERAL"
+          ]
+        },
+        {
+          "id": "H04",
+          "expected_status": "partial",
+          "actual_status": "partial",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": [
+            "EXCEPTION"
+          ]
+        },
+        {
+          "id": "H05",
+          "expected_status": "insufficient",
+          "actual_status": "insufficient",
+          "correct": true,
+          "false_answer": false,
+          "missing_facts": [],
+          "forbidden_found": [],
+          "citation_errors": [],
+          "opened_sources": []
+        }
+      ]
+    }
+  }
+}

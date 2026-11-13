@@ -1,0 +1,6 @@
+[
+ {"id":"X01","question":"редакция 2017","expected":["IT17"],"forbidden":["IT21"],"type":"exact"},
+ {"id":"X02","question":"приказ 2021","expected":["IT21"],"forbidden":["IT17"],"type":"exact"},
+ {"id":"X03","question":"Положение 24-2023","expected":["EST"],"type":"exact"},
+ {"id":"X04","question":"Приказ 82-2022","expected":["FLS"],"type":"exact"}
+]

@@ -1,0 +1,156 @@
+"""Local lexical retrieval with explicit, auditable synonym expansion."""
+import re
+import sqlite3
+
+ALIASES = {
+ 'техподдерж': ['техническ','поддержк'], 'айти': ['техническ','поддержк'],
+ 'флс': ['финансов','лицев','счет'], 'смет': ['смет'],
+ 'поездк': ['командировк'], 'командировк': ['поездк'],
+ 'печата': ['принтер'], 'печат': ['принтер'], 'принтер': ['печат'],
+ 'сломал': ['ремонт','неисправ'], 'неработ': ['неисправ','ремонт'],
+ 'заявк': ['заявк'], 'сведен': ['содерж','заявк'], 'напис': ['содерж','заявк'],
+ 'кмо': ['концертн','зал'], 'цод': ['центр','обработк','данн'],
+ 'фэу': ['финансов','управлен'], 'кфо': ['финансов','обеспечен'],
+ 'урп': ['управлен','проект'],
+}
+
+def terms(question):
+    normalized = re.sub(r'\bне\s+работ', 'неработ', question.lower().replace('ё','е'))
+    words=re.findall(r'[а-яёa-z0-9]+', normalized)
+    result=[]
+    for word in words:
+        if len(word)>=4: result.append(word[:6])
+        for key, values in ALIASES.items():
+            if word.startswith(key): result.extend(x[:6] for x in values)
+    return list(dict.fromkeys(result))[:60]
+
+def retrieve(db,question,k=3):
+    if not 1 <= k <= 100: raise ValueError('invalid k')
+    tokens=terms(question)
+    if not tokens: return []
+    query=' OR '.join('"'+x+'"*' for x in tokens)
+    # Use SQLite parameter binding; every result remains a real, locatable fragment.
+    return db.execute('SELECT f.* FROM fragments_fts x JOIN fragments f ON f.id=x.id WHERE fragments_fts MATCH ? ORDER BY bm25(fragments_fts),f.id LIMIT ?', (query,k)).fetchall()
+
+def imported(db,question,k=3):
+    tokens=terms(question)
+    if not tokens: return []
+    q=' OR '.join('"'+x+'"*' for x in tokens)
+    # Exact identifiers must be checked before applying k: unrelated years or
+    # document numbers should not displace the requested source.
+    identifiers = [re.sub(r'\s+', '', x).replace('–','-') for x in re.findall(r'(?<!\d)\d{1,6}\s*[-–/]\s*(?:19|20)\d{2}(?!\d)', question)]
+    years = re.findall(r'(?<!\d)(?:19|20)\d{2}(?!\d)', question) if not identifiers else []
+    candidates = db.execute('SELECT f.* FROM import_fts x JOIN import_fragments f ON f.id=x.id WHERE import_fts MATCH ? ORDER BY bm25(import_fts),f.id', (q,))
+    result=[]
+    for row in candidates:
+        text=row['text'].lower().replace('–','-')
+        compact=re.sub(r'\s+', '', text)
+        if identifiers and not all(re.search(r'(?<!\d)' + re.escape(identifier) + r'(?!\d)', compact) for identifier in identifiers): continue
+        if years and not all(re.search(r'(?<!\d)'+year+r'(?!\d)', text) for year in years): continue
+        result.append(row)
+        if len(result)>=k: break
+    return result
+
+# These generic request words cannot by themselves identify a document's topic.
+_GENERIC = ('каки', 'куда', 'когда', 'заявк', 'докуме', 'срок', 'сведен',
+            'указат', 'содерж', 'нужн', 'обрат', 'сообщ', 'каков', 'после',
+            'перед', 'описан', 'напис', 'поряд', 'форм', 'состав', 'дейст')
+
+def focus_terms(question):
+    return [x for x in terms(question) if len(x) >= 4 and not x.startswith(_GENERIC)]
+
+# Fault reports (formerly support_request/support_candidates) live in app/support.py.
+
+def coherent_candidates(db, question, parts):
+    """Prefer a clearly anchored source for generic subquestions, never merge versions."""
+    from .sufficiency import supports
+    from .procedures import staged, stage
+    # Independently specific subquestions must retain their separate sources.
+    if not staged(question) and len(parts)>1 and any(focus_terms(part) for part in parts[1:]):
+        return None
+    focus=focus_terms(question if staged(question) or len(parts)==1 else parts[0])
+    if len(focus)<2: return None
+    hits=imported(db,question,k=100)
+    grouped={}
+    for row in hits: grouped.setdefault((row['source_id'],row['version']),[]).append(row)
+    if staged(question):
+        from .procedures import version_units
+        cache = {}
+        def staged_units(key):
+            if key not in cache:
+                cache[key] = [u for u in version_units(db, *key) if u['stage'] and (u['facets'] or u['condition'])]
+            return cache[key]
+        grouped = {key: rows for key, rows in grouped.items() if staged_units(key)}
+    if not grouped: return None
+    def strength(rows):
+        words=re.findall(r'[а-яa-z0-9]+',' '.join(r['text'] for r in rows).lower().replace('ё','е'))
+        return sum(any(w.startswith(t) for w in words) for t in set(focus))
+    scored=sorted((((strength(rows), len({u['stage'] for u in staged_units(key)}) if staged(question) else 0),key,rows) for key,rows in grouped.items()),key=lambda x:x[0],reverse=True)
+    rank,key,rows=scored[0]
+    minimum = 1 if staged(question) and (len(scored) == 1 or rank[1] > scored[1][0][1]) else 2
+    if rank[0] < minimum or (len(scored)>1 and rank <= scored[1][0]): return None
+    if len(rows)<2 and not staged(question): return None
+    # Without curated dates one cannot choose between versions of a source.
+    if db.execute('SELECT count(*) FROM imports WHERE source_id=?',(key[0],)).fetchone()[0] != 1: return None
+    if staged(question):
+        # Units of the whole selected version: the stage can be carried by a
+        # heading and the form or deadline can sit on another page.
+        from .procedures import select_units
+        return select_units(staged_units(key))
+    # Preserve the existing sheet-cell isolation before expanding a source.
+    rows = filter_sibling_cells(rows, question)
+    # Relevance checks still apply for requests about cost, cancellation, etc.
+    return [r for r in rows if len(r['text']) <= 12000 and supports(question,r['text'])][:3]
+
+def filter_sibling_cells(rows, question):
+    """Avoid treating sheet-name-only matches as answers for adjacent cells."""
+    import json
+    if not rows:
+        return rows
+    first = rows[0]
+    first_meta = json.loads(first['metadata'])
+    if first_meta.get('type') != 'cell':
+        return rows
+    first_row = re.search(r'\d+$', first_meta.get('range', ''))
+    if not first_row:
+        return rows
+    query_terms = terms(question)
+    filtered = [first]
+    for row in rows[1:]:
+        meta = json.loads(row['metadata'])
+        other_row = re.search(r'\d+$', meta.get('range', ''))
+        same_row = (meta.get('type') == 'cell' and other_row and
+                    row['source_id'] == first['source_id'] and row['version'] == first['version'] and
+                    meta.get('sheet') == first_meta.get('sheet') and other_row.group() == first_row.group())
+        if same_row:
+            cell_text = str(meta.get('formula') or meta.get('value') or '').lower().replace('ё', 'е')
+            cell_terms = re.findall(r'[а-яёa-z0-9]+', cell_text)
+            if not any(word.startswith(term) for word in cell_terms for term in query_terms):
+                continue
+        filtered.append(row)
+    return filtered
+
+def context(db, fragment_id, attachment_versions=None):
+    """Return the selected fragment, linked footnotes and confirmed attachment versions."""
+    row=db.execute('SELECT * FROM import_fragments WHERE id=?',(fragment_id,)).fetchone()
+    if row is None: return []
+    import json
+    meta=json.loads(row['metadata'])
+    result=[dict(row)]
+    for fid in meta.get('footnote_ids', []):
+        note = db.execute('SELECT * FROM import_fragments WHERE source_id=? AND version=? AND locator=?',
+                          (row['source_id'], row['version'], 'footnote/' + str(fid))).fetchone()
+        if note is not None:
+            result.append(dict(note))
+    try:
+        relations=db.execute("SELECT target,basis FROM evidence_relations WHERE kind='attachment' AND origin=?",(row['source_id'],)).fetchall()
+        for relation in relations:
+            version = (attachment_versions or {}).get(relation['target'])
+            if not version: continue  # A relation alone does not establish an applicable version.
+            for r in db.execute('SELECT * FROM import_fragments WHERE source_id=? AND version=? ORDER BY rowid',(relation['target'],version)):
+                entry=dict(r)
+                entry['attachment_basis']=relation['basis']
+                result.append(entry)
+    except sqlite3.OperationalError as exc:
+        if 'no such table: evidence_relations' not in str(exc): raise
+    return result

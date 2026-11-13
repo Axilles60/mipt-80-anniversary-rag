@@ -1,0 +1,13 @@
+**
+!Dockerfile
+!requirements.txt
+!app/
+!app/**
+!fixtures/
+!fixtures/**
+!tests/
+!tests/**
+!eval/
+!eval/**
+**/__pycache__/
+**/*.pyc
