@@ -226,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
                                     from .procedures import missing as missing_facets, expand_items
                                     expanded = expand_items(db, checked_result['items'])
                                     content += render_stages(expanded, 'Другие подтверждённые сведения', source_link)
-                                    for gap in missing_facets(expanded):
+                                    for gap in missing_facets(expanded, part):
                                         content += '<p>Недостаточно данных для части: ' + esc(gap) + '.</p>'
                                 else:
                                     content += '<h4>Подтверждённые пункты; порядок выполнения уточните по источнику</h4><ol>'

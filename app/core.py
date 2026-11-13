@@ -65,7 +65,7 @@ def imported_parts(db, question):
         from .procedures import staged, missing as missing_facets
         if staged(question):
             selected = [row for row in coherent if len(row['text']) <= MAX_EXCERPT_CHARS]
-            gaps = missing_facets(selected)
+            gaps = missing_facets(selected, question)
             return selected, gaps, len(selected) != len(coherent)
         # Do not silently claim an independent intent was satisfied.
         coverage = [p for p in parts if not any(supports(p, row['text']) for row in coherent)]

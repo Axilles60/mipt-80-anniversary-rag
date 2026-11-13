@@ -64,28 +64,67 @@ def _sentences(text):
 
 QUESTION_BEFORE = re.compile(r'\b(?:до|перед)\s+|\bзаранее\b|\bзаблаговременно\b|\bпредварительно\b|'
                              r'\bкогда\s+(?:пода\w*|оформ\w*|переда\w*)', re.I)
-QUESTION_AFTER = re.compile(r'\bпосле\s+|\bпо\s+(?:возвращ|окончан|завершен|прибыт|итогам)\w*', re.I)
+QUESTION_AFTER = re.compile(r'\bпосле\s+|\bпо\s+(?:е[её]\s+|его\s+|их\s+)?(?:возвращ|окончан|завершен|прибыт|итогам|результатам)\w*', re.I)
 
 
 def staged(question):
     return bool(QUESTION_BEFORE.search(question) and QUESTION_AFTER.search(question))
 
 
-def marker(text):
-    """Stage named by an explicit event marker in one unit, or None."""
+# The event a staged question is about: "перед аттестацией … после неё",
+# "до начала инвентаризации и по её итогам". Pronouns refer to it.
+_EVENT_NOUN = r'(?:(?:проведени|начал|окончани|завершени|прохождени|оформлени)\w*\s+)?'
+_QUESTION_EVENT = re.compile(r'\b(?:до|перед|после|по\s+(?:итогам|результатам|окончании|завершении))\s+'
+                             + _EVENT_NOUN + r'(?:е[её]\s+|его\s+)?([а-яё]{4,})', re.I)
+_NOT_EVENT = re.compile(r'^(?:него|нее|неё|этого|этой|того|той|них|них|итогам|результатам|начала|окончания|'
+                        r'завершения|проведения|даты|дня|срока|момента)$')
+
+
+def question_events(question):
+    """Stems of the events named around "до/перед/после" in a question."""
+    from .sufficiency import _stem
+    out = []
+    for m in _QUESTION_EVENT.finditer(question.lower().replace('ё', 'е')):
+        word = m.group(1)
+        if _NOT_EVENT.match(word):
+            continue
+        stem = _stem(word)
+        if len(stem) >= 4 and stem not in out:
+            out.append(stem)
+    return tuple(out)
+
+
+def _event_patterns(events):
+    if not events:
+        return None, None
+    event = '(?:' + '|'.join(re.escape(e) for e in events) + r')\w*'
+    before = re.compile(r'\b(?:до|перед)\s+' + _EVENT_NOUN + event, re.I)
+    after = re.compile(r'\bпосле\s+' + _EVENT_NOUN + event
+                       + r'|\bпо\s+(?:итогам|результатам|окончании|завершении)\s+' + _EVENT_NOUN + event, re.I)
+    return before, after
+
+
+def marker(text, events=()):
+    """Stage named by an explicit event marker in one unit, or None.
+
+    Besides trip events, markers of the events named in the question count."""
     a, b = BEFORE_TEXT.search(text), AFTER_TEXT.search(text)
+    before, after = _event_patterns(events)
+    if before is not None:
+        a = a or before.search(text)
+        b = b or after.search(text)
     if a and not b: return 'до'
     if b and not a: return 'после'
     return None
 
 
-def stage(text):
+def stage(text, events=()):
     """Stage of a standalone text without document context."""
-    return marker(text)
+    return marker(text, events)
 
 
-def _heading_stage(text):
-    explicit = marker(text)
+def _heading_stage(text, events=()):
+    explicit = marker(text, events)
     if explicit: return explicit
     a, b = BEFORE_HEADING.search(text), AFTER_HEADING.search(text)
     if a and not b: return 'до'
@@ -141,8 +180,10 @@ def locate(text, piece, start=0, end=None):
     return (start, end, piece)
 
 
-def version_units(db, source_id, version):
-    """Units of one imported version, in document order, with stage context."""
+def version_units(db, source_id, version, events=()):
+    """Units of one imported version, in document order, with stage context.
+
+    ``events``: stems of the events named in the question (question_events)."""
     rows = db.execute('SELECT rowid AS rowid, * FROM import_fragments WHERE source_id=? AND version=? ORDER BY rowid',
                       (source_id, version)).fetchall()
     units, section, seen = [], None, set()
@@ -163,7 +204,7 @@ def version_units(db, source_id, version):
         for start, end, text in _split(row['text'] or '', metadata):
             heading = bool(_HEADING.match(text) or (kind == 'paragraph' and str(metadata.get('style') or '').lower().startswith(('heading', 'title', 'заголов'))))
             if heading:
-                section = _heading_stage(text)
+                section = _heading_stage(text, events)
                 continue
             if _APPENDIX_LIST.match(text):
                 section = None  # a list of appendices closes the procedure sections
@@ -171,7 +212,7 @@ def version_units(db, source_id, version):
             if key in seen:
                 continue  # the OCR layer may repeat the text layer of a page
             seen.add(key)
-            own = marker(text)
+            own = marker(text, events)
             unit_stage = own or section
             if own and kind != 'table_row':
                 # Following items of the same section continue the named stage
@@ -190,6 +231,9 @@ def version_units(db, source_id, version):
             units.append({'id': row['id'], 'source_id': source_id, 'version': version, 'locator': row['locator'], 'text': text, 'start': start, 'end': end,
                           'header': header,
                           'stage': unit_stage, 'facets': facets, 'condition': bool(CONDITION.search(text)),
+                          # A unit that itself names the stage ("После аттестации
+                          # работник …") is a step even without a listed verb.
+                          'marked': bool(own),
                           'metadata': metadata, 'rowid': row['rowid']})
     return units
 
@@ -203,7 +247,7 @@ def select_units(all_units, per_stage=10):
     """Keep units that state an action, form, deadline or condition of a stage."""
     selected = []
     for name in ('до', 'после'):
-        stage_units = [u for u in all_units if u['stage'] == name and (u['facets'] or u['condition'])]
+        stage_units = [u for u in all_units if u['stage'] == name and (u['facets'] or u['condition'] or u.get('marked'))]
         chosen = []
         # Make sure each facet present in the stage is represented, then fill in order.
         for facet, _ in FACETS:
@@ -216,16 +260,37 @@ def select_units(all_units, per_stage=10):
     return selected
 
 
-def missing(items):
+ASK_TIME = re.compile(r'\bкогда\b|\bсрок\w*|сколько|за\s+какое|в\s+течение', re.I)
+ASK_FORM = re.compile(r'\bформ\w*|\bбланк\w*|\bдокумент\w*|\bчто\s+(?:заполн|подать|сдать|представить)\w*', re.I)
+
+
+def requested_facets(question):
+    """Facets a staged question asks about: an action always; a deadline or a
+    form only when the question asks for them (ANS-07: name the gaps of what
+    was asked, not of everything a procedure might contain)."""
+    if question is None:
+        return {label for label, _ in FACETS}
+    out = {'действие'}
+    if ASK_TIME.search(question): out.add('срок')
+    if ASK_FORM.search(question): out.add('номер формы')
+    return out
+
+
+def missing(items, question=None):
     """Flag unsupported facets, without inventing form IDs, steps or deadlines.
 
     Items are units with a 'stage' key, or plain texts staged by explicit markers.
+    A unit that names its stage itself counts as the action of that stage.
     """
+    wanted = requested_facets(question)
     out = []
     for name in ('до', 'после'):
         group = [item for item in items if (item.get('stage') if 'stage' in item else stage(item['text'])) == name]
         for label, pattern in FACETS:
-            if not any(pattern.search(item['text']) or label in (item.get('facets') or []) for item in group):
+            if label not in wanted:
+                continue
+            if not any(pattern.search(item['text']) or label in (item.get('facets') or [])
+                       or (label == 'действие' and item.get('marked')) for item in group):
                 out.append(f'{name}: {label}')
     return out
 

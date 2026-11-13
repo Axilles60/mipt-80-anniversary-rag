@@ -306,7 +306,7 @@ PY eval/measure_hybrid.py --split tuning --scores      # таблица z для
 
 **Проверка.** `PY -m unittest tests.test_auto_import_web -v`: чистая база + папка (PDF, ZIP с DOCX, повреждённый PDF, `.txt`) → ответы через веб со ссылками (регламент поддержки, этапы поездки), отказ вне базы, `.txt` не учтён, `error 1`; перезапуск с тем же индексом — `unchanged 2`; пустая папка → отказ, не сбой. Полный набор 71/71.
 
-**Не проверено.** Сборка и запуск образа: Docker Desktop на этой машине не запущен. Команда проверки после запуска Docker: `docker build -t employee-navigator .` и `docker run` из README на папке с вымышленными документами (`eval/synthetic_docs.py`).
+**Не проверено.** Сборка и запуск образа: на этой машине Docker Desktop не стартует — не установлен WSL («Windows Subsystem for Linux is not installed»); установка WSL — решение владельца машины. По указанию пользователя Docker больше не запускается. Команда проверки после запуска Docker: `docker build -t employee-navigator .` и `docker run` из README на папке с вымышленными документами (`eval/synthetic_docs.py`).
 
 ## Следующие шаги
 

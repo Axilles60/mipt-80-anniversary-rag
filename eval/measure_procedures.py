@@ -218,6 +218,46 @@ HOLDOUT2 = [
 ]
 
 
+ONBOARDING = [['ПОРЯДОК приёма на работу (учебный вымышленный документ)',
+               '1. Общие положения',
+               '1.1. Порядок применяется ко всем подразделениям.',
+               '2. До выхода на работу',
+               '2.1. Кандидат представляет в отдел кадров заявление по форме ПР-1.',
+               '2.2. Документы передаются не позднее трёх рабочих дней до первого рабочего дня.'],
+              ['3. После оформления',
+               '3.1. Работник проходит вводный инструктаж у руководителя подразделения.',
+               '3.2. Пропуск выдаётся в течение двух рабочих дней после подписания договора.']]
+
+def c_onboarding(root):
+    return [write_pdf(root / 'onboarding.pdf', ONBOARDING)] + [write_pdf(root / n, p) for n, p in TRIP_COMPETITORS.items()]
+
+def c_repair_table(root):
+    path = docx_table(root / 'repair.docx', ['ПОРЯДОК ремонта служебных помещений (учебный вымышленный документ)'],
+                      [['Этап', 'Действие', 'Срок'],
+                       ['До начала ремонта', 'Подать заявку по форме РМ-1 в хозяйственный отдел', 'за 10 рабочих дней'],
+                       ['После завершения ремонта', 'Подписать акт приёмки по форме РМ-4', 'в течение 2 рабочих дней']])
+    return [path, write_xlsx(root / 'budget.xlsx', SUPPORT_BUDGET)] + [write_pdf(root / n, p) for n, p in TRIP_COMPETITORS.items()]
+
+CORPORA.update(onboarding=c_onboarding, repair_table=c_repair_table)
+
+# Written after iteration 13 (stages from the question's event) and before any
+# change for it; run once. HOLDOUT2 is a tuning split from iteration 13 on.
+HOLDOUT3 = [
+    dict(id='R01', corpus='onboarding', question='Что сделать до выхода на работу и после оформления?', status='answer',
+         facts=[('по форме ПР-1', 'До'), ('не позднее трёх рабочих дней', 'До'), ('вводный инструктаж', 'После'),
+                ('в течение двух рабочих дней', 'После')], forbidden=['путевой лист', 'смету поездок']),
+    dict(id='R02', corpus='onboarding', question='Что сделать до отпуска и после него?', status='insufficient',
+         facts=[], forbidden=['ПР-1']),
+    dict(id='R03', corpus='onboarding', question='Что нужно сделать перед аттестацией и после неё?', status='insufficient',
+         facts=[], forbidden=['ПР-1', 'путевой лист']),
+    dict(id='R04', corpus='repair_table', question='Что сделать до начала ремонта кабинета и после его завершения?', status='answer',
+         facts=[('по форме РМ-1', 'До'), ('за 10 рабочих дней', 'До'), ('по форме РМ-4', 'После')],
+         forbidden=['подрядчиком', 'путевой лист']),
+    dict(id='R05', corpus='trip_docx', question='Командировка: какие документы оформить заранее и что сдать по возвращении?',
+         status='answer', facts=[('по форме ФП-11', 'До'), ('по ф. ФП-52', 'После')], forbidden=['путевой лист']),
+]
+
+
 def answer_items(items):
     skip = ('Ограничение:', 'Обнаружено противоречие', 'Недостаточно', 'Применимость и полнота', 'Укажите дату', 'Уточните условие')
     return [i for i in items if not i['text'].strip().startswith(skip)]
@@ -282,13 +322,14 @@ def measure(cases):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--split', choices=['dev', 'holdout', 'holdout2', 'all'], default='all')
+    parser.add_argument('--split', choices=['dev', 'holdout', 'holdout2', 'holdout3', 'all'], default='all')
     parser.add_argument('--report')
     args = parser.parse_args()
     out = {'data': 'synthetic', 'mode': 'extractive'}
     if args.split in ('dev', 'all'): out['dev'] = measure(DEV)
     if args.split in ('holdout', 'all'): out['holdout'] = measure(HOLDOUT)
     if args.split in ('holdout2', 'all'): out['holdout2'] = measure(HOLDOUT2)
+    if args.split in ('holdout3', 'all'): out['holdout3'] = measure(HOLDOUT3)
     text = json.dumps(out, ensure_ascii=False, indent=1)
     if args.report:
         report = Path(args.report)

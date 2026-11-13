@@ -142,20 +142,29 @@ def coherent_candidates(db, question, parts):
     grouped={}
     for row in hits: grouped.setdefault((row['source_id'],row['version']),[]).append(row)
     if staged(question):
-        from .procedures import version_units
+        from .procedures import version_units, question_events
         cache = {}
+        events = question_events(question)
         def staged_units(key):
             if key not in cache:
-                cache[key] = [u for u in version_units(db, *key) if u['stage'] and (u['facets'] or u['condition'])]
+                cache[key] = [u for u in version_units(db, *key, events=events) if u['stage'] and (u['facets'] or u['condition'] or u['marked'])]
             return cache[key]
         grouped = {key: rows for key, rows in grouped.items() if staged_units(key)}
     if not grouped: return None
     def strength(rows):
         words=re.findall(r'[а-яa-z0-9]+',' '.join(r['text'] for r in rows).lower().replace('ё','е'))
         return sum(any(w.startswith(t) for w in words) for t in set(focus))
-    scored=sorted((((strength(rows), len({u['stage'] for u in staged_units(key)}) if staged(question) else 0),key,rows) for key,rows in grouped.items()),key=lambda x:x[0],reverse=True)
+    def staging(key):
+        """(the staged units name the question's event, number of stages)."""
+        if not staged(question): return (0, 0)
+        found = staged_units(key)
+        named = any(re.search(r'\b' + re.escape(e), u['text'].lower().replace('ё','е')) for u in found for e in events)
+        return (int(named), len({u['stage'] for u in found}))
+    scored=sorted((((strength(rows),) + staging(key),key,rows) for key,rows in grouped.items()),key=lambda x:x[0],reverse=True)
     rank,key,rows=scored[0]
-    minimum = 1 if staged(question) and (len(scored) == 1 or rank[1] > scored[1][0][1]) else 2
+    # One matching word suffices when the document alone names the event of
+    # the stages, or alone has both stages.
+    minimum = 1 if staged(question) and (len(scored) == 1 or rank[1:] > scored[1][0][1:]) else 2
     if rank[0] < minimum or (len(scored)>1 and rank <= scored[1][0]): return None
     if len(rows)<2 and not staged(question): return None
     # Without curated dates one cannot choose between versions of a source.
