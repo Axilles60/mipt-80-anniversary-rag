@@ -93,7 +93,7 @@ def diagnose(fmt='pdf', questions=QUESTIONS, pages=TRIP_PAGES, facts=TRIP_FACTS)
             with closing(connect(env['NAVIGATOR_DB'])) as db:
                 fragments = [dict(r) for r in db.execute('SELECT * FROM import_fragments ORDER BY rowid')]
                 for q in questions:
-                    candidates = {r['id'] for r in imported(db, q, k=100)}
+                    candidates = {r['id'] for r in imported(db, q, k=100, gate=False)}
                     coherent = coherent_candidates(db, q, split_question(q)) or []
                     selected, gaps, _ = imported_parts(db, q)
                     page = urlopen(base + '/ask', data=urlencode({'question': q, 'date': '2024-01-01'}).encode(), timeout=10).read().decode()

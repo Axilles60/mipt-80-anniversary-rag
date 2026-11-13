@@ -30,7 +30,13 @@ RRF_K = 60              # standard reciprocal-rank-fusion constant
 # off-topic ones, would get "nearest" fragments. Calibrated on
 # fixtures/hybrid/tuning.json only: off-topic questions peak at z<=2.4.
 DEFAULT_MIN_Z = 2.5
-MIN_POOL = 20           # below this many fragments z is unreliable: no dense-only candidates
+# Hybrid also drops a lexical (BM25) candidate whose meaning is far from the
+# question: z below GATE_Z. Shared words such as "заявка", "пропуск", "курс"
+# otherwise answer questions the corpus does not cover. On the tuning sets the
+# lowest z of a relevant lexical candidate was 1.47; most unrelated ones were
+# below 1.2.
+DEFAULT_GATE_Z = 1.2
+MIN_POOL = 20           # below this many fragments z is unreliable: no dense-only candidates, no gate
 
 _lock = threading.Lock()
 _encoders = {}
@@ -48,6 +54,13 @@ def min_z():
         return float(os.environ.get('NAVIGATOR_DENSE_MIN_Z', DEFAULT_MIN_Z))
     except ValueError:
         return DEFAULT_MIN_Z
+
+
+def gate_z():
+    try:
+        return float(os.environ.get('NAVIGATOR_DENSE_GATE_Z', DEFAULT_GATE_Z))
+    except ValueError:
+        return DEFAULT_GATE_Z
 
 
 def model_path():
@@ -117,7 +130,7 @@ def status():
     enc = encoder()
     if enc is None:
         return {'mode': 'bm25', 'requested': current, 'fallback': _failures.get(str(model_path()), 'unavailable')}
-    return {'mode': current, 'model': enc.name, 'min_z': min_z()}
+    return {'mode': current, 'model': enc.name, 'min_z': min_z(), 'gate_z': gate_z()}
 
 
 def chunks(text):

@@ -32,7 +32,10 @@ def retrieve(db,question,k=3):
     # Use SQLite parameter binding; every result remains a real, locatable fragment.
     return db.execute('SELECT f.* FROM fragments_fts x JOIN fragments f ON f.id=x.id WHERE fragments_fts MATCH ? ORDER BY bm25(fragments_fts),f.id LIMIT ?', (query,k)).fetchall()
 
-def imported(db,question,k=3):
+def imported(db,question,k=3,gate=True):
+    """Fragments for a question. ``gate`` (hybrid mode only) drops lexical
+    candidates far in meaning from the question; it must be off when hits are
+    aggregated to choose a document rather than used as answer items."""
     tokens=terms(question)
     if not tokens: return []
     q=' OR '.join('"'+x+'"*' for x in tokens)
@@ -43,7 +46,7 @@ def imported(db,question,k=3):
     candidates = db.execute('SELECT f.* FROM import_fts x JOIN import_fragments f ON f.id=x.id WHERE import_fts MATCH ? ORDER BY bm25(import_fts),f.id', (q,))
     from . import dense
     if dense.mode() != 'bm25':
-        candidates = _with_dense(db, question, candidates.fetchall(), dense)
+        candidates = _with_dense(db, question, candidates.fetchall(), dense, gate)
     result=[]
     for row in candidates:
         text=row['text'].lower().replace('–','-')
@@ -54,7 +57,7 @@ def imported(db,question,k=3):
         if len(result)>=k: break
     return result
 
-def _with_dense(db, question, lexical, dense):
+def _with_dense(db, question, lexical, dense, gate=True):
     """Dense-only or RRF-fused candidate order; BM25 order if the model is unavailable.
 
     Hybrid: the dense ranking reorders all lexical candidates and may add
@@ -67,6 +70,13 @@ def _with_dense(db, question, lexical, dense):
     if dense.mode() == 'dense':
         order = standout
     else:
+        if gate:
+            z = {fid: value for fid, _, value in scored}
+            floor = dense.gate_z()
+            # Shared words alone do not make a fragment relevant: drop lexical
+            # candidates whose meaning is far from the question (z is None for
+            # a corpus too small to standardise; then nothing is dropped).
+            lexical = [r for r in lexical if z.get(r['id']) is None or z[r['id']] >= floor]
         lexical_ids = {r['id'] for r in lexical}
         added = set(standout)
         order = dense.fuse([r['id'] for r in lexical], [fid for fid, _, _ in scored if fid in lexical_ids or fid in added])
@@ -127,7 +137,8 @@ def coherent_candidates(db, question, parts):
         return None
     focus=focus_terms(question if staged(question) or len(parts)==1 else parts[0])
     if len(focus)<2: return None
-    hits=imported(db,question,k=100)
+    # Document choice aggregates lexical evidence across many fragments.
+    hits=imported(db,question,k=100,gate=False)
     grouped={}
     for row in hits: grouped.setdefault((row['source_id'],row['version']),[]).append(row)
     if staged(question):

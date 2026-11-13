@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from app import retrieval
 
-def baseline(db, question, k=3):
+def baseline(db, question, k=3, **_later_options):  # e.g. gate=; the frozen search ignores them
     tokens=retrieval.terms(question)
     if not tokens: return []
     query=' OR '.join('"'+x+'"*' for x in tokens)

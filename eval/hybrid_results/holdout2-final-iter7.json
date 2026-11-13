@@ -1,0 +1,1542 @@
+{
+ "split": "holdout2",
+ "k": 5,
+ "data": "synthetic",
+ "cases": 20,
+ "modes": {
+  "bm25": {
+   "status": {
+    "mode": "bm25"
+   },
+   "ranking": {
+    "positive_cases": 15,
+    "expected_paragraphs": 15,
+    "recall@1": 0.4,
+    "recall@3": 0.867,
+    "recall@5": 0.933,
+    "mrr": 0.628,
+    "ndcg@5": 0.706
+   },
+   "negatives_with_candidates": 3,
+   "top5": {
+    "Q01": [
+     [
+      "VIS-3"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "REM-2"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "CON-1"
+     ]
+    ],
+    "Q02": [
+     [
+      "CON-4"
+     ],
+     [
+      "VIS-4"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-2"
+     ]
+    ],
+    "Q03": [
+     [
+      "CON-3"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "TR-4"
+     ],
+     [
+      "TR-2"
+     ],
+     [
+      "CON-2"
+     ]
+    ],
+    "Q04": [
+     [
+      "CON-2"
+     ],
+     [
+      "ACC-3"
+     ],
+     [
+      "SICK-3"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "Q05": [
+     [
+      "ACC-2"
+     ],
+     [
+      "ACC-3"
+     ]
+    ],
+    "Q06": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ],
+     [
+      "ACC-5"
+     ],
+     [
+      "TR-1"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "DOC-4"
+     ]
+    ],
+    "Q07": [
+     [
+      "REM-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-3"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "Q08": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "REM-3"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ]
+    ],
+    "Q09": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-3"
+     ]
+    ],
+    "Q10": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-4"
+     ]
+    ],
+    "Q11": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ],
+     [
+      "TR-2"
+     ]
+    ],
+    "Q12": [
+     [
+      "TR-3"
+     ],
+     [
+      "VIS-4"
+     ],
+     [
+      "sheet/Бюджет/cell/A2"
+     ],
+     [
+      "DOC-3"
+     ],
+     [
+      "TR-1"
+     ]
+    ],
+    "Q13": [
+     [
+      "REM-4"
+     ]
+    ],
+    "Q14": [
+     [
+      "DOC-2"
+     ],
+     [
+      "PARK-3"
+     ]
+    ],
+    "Q15": [
+     [
+      "CAN-1"
+     ],
+     [
+      "CAN-2"
+     ]
+    ],
+    "Q16": [
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "CAN-3"
+     ]
+    ],
+    "Q17": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ],
+     [
+      "TR-3"
+     ]
+    ],
+    "Q18": [
+     [
+      "VIS-3"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "ACC-4"
+     ],
+     [
+      "TR-2"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "Q19": [],
+    "Q20": []
+   },
+   "answers": {
+    "correct_answers": 11,
+    "false_answers": 5,
+    "missed_answers": 2,
+    "correct_refusals": "2/5",
+    "citation_precision": 0.297,
+    "broken_links": 0,
+    "mean_seconds": 0.015,
+    "results": [
+     {
+      "id": "Q01",
+      "question": "Гость приедет завтра — за сколько дней подать заявку на его допуск?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.045
+     },
+     {
+      "id": "Q02",
+      "question": "Что посетитель должен показать охране?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CON-4"
+       ],
+       [
+        "VIS-4"
+       ],
+       [
+        "sheet/Бюджет/cell/B3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.006
+     },
+     {
+      "id": "Q03",
+      "question": "Кто согласует список людей от подрядной организации?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CON-3"
+       ],
+       [
+        "CON-2"
+       ],
+       [
+        "CON-4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.017
+     },
+     {
+      "id": "Q04",
+      "question": "В какой срок отдать в кадры номер больничного листа?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.016
+     },
+     {
+      "id": "Q05",
+      "question": "Забыл пароль, а сайт восстановления не грузится — куда звонить?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.004
+     },
+     {
+      "id": "Q06",
+      "question": "Когда заводят учётку новому работнику?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B2"
+       ],
+       [
+        "ACC-5"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.005
+     },
+     {
+      "id": "Q07",
+      "question": "На сколько дней дают переносной компьютер?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "REM-2"
+       ],
+       [
+        "TR-3"
+       ],
+       [
+        "SICK-3"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.019
+     },
+     {
+      "id": "Q08",
+      "question": "Как вернуть выданный ноутбук?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "REM-3"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "Q09",
+      "question": "Что приложить к заявлению на въезд автомобиля?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.017
+     },
+     {
+      "id": "Q10",
+      "question": "Кто выдаёт разрешение заезжать на территорию на своей машине?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.004
+     },
+     {
+      "id": "Q11",
+      "question": "Как попасть на курсы повышения квалификации?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B2"
+       ],
+       [
+        "TR-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "Q12",
+      "question": "Что делать с удостоверением после обучения?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-3"
+       ],
+       [
+        "TR-4"
+       ],
+       [
+        "TR-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.015
+     },
+     {
+      "id": "Q13",
+      "question": "В какие часы нужно быть на связи при удалёнке?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-4"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.017
+     },
+     {
+      "id": "Q14",
+      "question": "Когда регистрировать отправляемые письма?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-2"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "Q15",
+      "question": "Во сколько открывается столовая?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CAN-2"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.016
+     },
+     {
+      "id": "Q16",
+      "question": "Как оформить пропуск для домашнего питомца?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/A3"
+       ],
+       [
+        "sheet/Бюджет/cell/B3"
+       ],
+       [
+        "CAN-3"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.017
+     },
+     {
+      "id": "Q17",
+      "question": "Сколько стоит курс английского языка?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B2"
+       ],
+       [
+        "TR-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "Q18",
+      "question": "Как подать заявку на отпуск по уходу за ребёнком?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "VIS-3"
+       ],
+       [
+        "VIS-2"
+       ],
+       [
+        "ACC-4"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "Q19",
+      "question": "Кто оплачивает такси до аэропорта?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.002
+     },
+     {
+      "id": "Q20",
+      "question": "Где взять бланк авансового отчёта?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.012
+     }
+    ]
+   }
+  },
+  "dense": {
+   "status": {
+    "mode": "dense",
+    "model": "multilingual-e5-small@470268510",
+    "min_z": 2.5,
+    "gate_z": 1.2
+   },
+   "ranking": {
+    "positive_cases": 15,
+    "expected_paragraphs": 15,
+    "recall@1": 0.733,
+    "recall@3": 0.933,
+    "recall@5": 0.933,
+    "mrr": 0.833,
+    "ndcg@5": 0.86
+   },
+   "negatives_with_candidates": 0,
+   "top5": {
+    "Q01": [
+     [
+      "VIS-3"
+     ],
+     [
+      "VIS-2"
+     ]
+    ],
+    "Q02": [
+     [
+      "VIS-4"
+     ]
+    ],
+    "Q03": [
+     [
+      "CON-1"
+     ],
+     [
+      "CON-3"
+     ]
+    ],
+    "Q04": [
+     [
+      "SICK-3"
+     ]
+    ],
+    "Q05": [
+     [
+      "ACC-2"
+     ],
+     [
+      "ACC-3"
+     ]
+    ],
+    "Q06": [
+     [
+      "ACC-4"
+     ]
+    ],
+    "Q07": [
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "Q08": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ]
+    ],
+    "Q09": [
+     [
+      "PARK-3"
+     ],
+     [
+      "PARK-2"
+     ]
+    ],
+    "Q10": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-3"
+     ]
+    ],
+    "Q11": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ]
+    ],
+    "Q12": [
+     [
+      "TR-3"
+     ]
+    ],
+    "Q13": [
+     [
+      "REM-4"
+     ]
+    ],
+    "Q14": [
+     [
+      "DOC-2"
+     ]
+    ],
+    "Q15": [
+     [
+      "CAN-2"
+     ],
+     [
+      "CAN-1"
+     ]
+    ],
+    "Q16": [],
+    "Q17": [],
+    "Q18": [],
+    "Q19": [],
+    "Q20": []
+   },
+   "answers": {
+    "correct_answers": 12,
+    "false_answers": 1,
+    "missed_answers": 2,
+    "correct_refusals": "5/5",
+    "citation_precision": 0.706,
+    "broken_links": 0,
+    "mean_seconds": 0.13,
+    "results": [
+     {
+      "id": "Q01",
+      "question": "Гость приедет завтра — за сколько дней подать заявку на его допуск?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 1.969
+     },
+     {
+      "id": "Q02",
+      "question": "Что посетитель должен показать охране?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-4"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.028
+     },
+     {
+      "id": "Q03",
+      "question": "Кто согласует список людей от подрядной организации?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CON-3"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.019
+     },
+     {
+      "id": "Q04",
+      "question": "В какой срок отдать в кадры номер больничного листа?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.021
+     },
+     {
+      "id": "Q05",
+      "question": "Забыл пароль, а сайт восстановления не грузится — куда звонить?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.025
+     },
+     {
+      "id": "Q06",
+      "question": "Когда заводят учётку новому работнику?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-4"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.038
+     },
+     {
+      "id": "Q07",
+      "question": "На сколько дней дают переносной компьютер?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.052
+     },
+     {
+      "id": "Q08",
+      "question": "Как вернуть выданный ноутбук?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.039
+     },
+     {
+      "id": "Q09",
+      "question": "Что приложить к заявлению на въезд автомобиля?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-3"
+       ],
+       [
+        "PARK-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.031
+     },
+     {
+      "id": "Q10",
+      "question": "Кто выдаёт разрешение заезжать на территорию на своей машине?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "Q11",
+      "question": "Как попасть на курсы повышения квалификации?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.039
+     },
+     {
+      "id": "Q12",
+      "question": "Что делать с удостоверением после обучения?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-3"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.033
+     },
+     {
+      "id": "Q13",
+      "question": "В какие часы нужно быть на связи при удалёнке?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-4"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.033
+     },
+     {
+      "id": "Q14",
+      "question": "Когда регистрировать отправляемые письма?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-2"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.03
+     },
+     {
+      "id": "Q15",
+      "question": "Во сколько открывается столовая?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CAN-2"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.03
+     },
+     {
+      "id": "Q16",
+      "question": "Как оформить пропуск для домашнего питомца?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.033
+     },
+     {
+      "id": "Q17",
+      "question": "Сколько стоит курс английского языка?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.024
+     },
+     {
+      "id": "Q18",
+      "question": "Как подать заявку на отпуск по уходу за ребёнком?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.047
+     },
+     {
+      "id": "Q19",
+      "question": "Кто оплачивает такси до аэропорта?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.043
+     },
+     {
+      "id": "Q20",
+      "question": "Где взять бланк авансового отчёта?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.051
+     }
+    ]
+   }
+  },
+  "hybrid": {
+   "status": {
+    "mode": "hybrid",
+    "model": "multilingual-e5-small@470268510",
+    "min_z": 2.5,
+    "gate_z": 1.2
+   },
+   "ranking": {
+    "positive_cases": 15,
+    "expected_paragraphs": 15,
+    "recall@1": 0.467,
+    "recall@3": 1.0,
+    "recall@5": 1.0,
+    "mrr": 0.722,
+    "ndcg@5": 0.794
+   },
+   "negatives_with_candidates": 3,
+   "top5": {
+    "Q01": [
+     [
+      "VIS-3"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "CON-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "Q02": [
+     [
+      "VIS-4"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-5"
+     ]
+    ],
+    "Q03": [
+     [
+      "CON-3"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "CON-2"
+     ]
+    ],
+    "Q04": [
+     [
+      "CON-2"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "Q05": [
+     [
+      "ACC-2"
+     ],
+     [
+      "ACC-3"
+     ]
+    ],
+    "Q06": [
+     [
+      "ACC-5"
+     ],
+     [
+      "ACC-4"
+     ],
+     [
+      "TR-1"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "Q07": [
+     [
+      "REM-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "Q08": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ]
+    ],
+    "Q09": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-3"
+     ]
+    ],
+    "Q10": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-3"
+     ]
+    ],
+    "Q11": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ],
+     [
+      "TR-2"
+     ]
+    ],
+    "Q12": [
+     [
+      "TR-3"
+     ],
+     [
+      "TR-1"
+     ]
+    ],
+    "Q13": [
+     [
+      "REM-4"
+     ]
+    ],
+    "Q14": [
+     [
+      "DOC-2"
+     ],
+     [
+      "PARK-3"
+     ]
+    ],
+    "Q15": [
+     [
+      "CAN-1"
+     ],
+     [
+      "CAN-2"
+     ]
+    ],
+    "Q16": [
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "CAN-3"
+     ]
+    ],
+    "Q17": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ]
+    ],
+    "Q18": [
+     [
+      "VIS-3"
+     ],
+     [
+      "VIS-2"
+     ]
+    ],
+    "Q19": [],
+    "Q20": []
+   },
+   "answers": {
+    "correct_answers": 13,
+    "false_answers": 3,
+    "missed_answers": 2,
+    "correct_refusals": "2/5",
+    "citation_precision": 0.382,
+    "broken_links": 0,
+    "mean_seconds": 0.132,
+    "results": [
+     {
+      "id": "Q01",
+      "question": "Гость приедет завтра — за сколько дней подать заявку на его допуск?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 1.983
+     },
+     {
+      "id": "Q02",
+      "question": "Что посетитель должен показать охране?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-4"
+       ],
+       [
+        "sheet/Бюджет/cell/B3"
+       ],
+       [
+        "VIS-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.025
+     },
+     {
+      "id": "Q03",
+      "question": "Кто согласует список людей от подрядной организации?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CON-3"
+       ],
+       [
+        "CON-2"
+       ],
+       [
+        "CON-4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.019
+     },
+     {
+      "id": "Q04",
+      "question": "В какой срок отдать в кадры номер больничного листа?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.03
+     },
+     {
+      "id": "Q05",
+      "question": "Забыл пароль, а сайт восстановления не грузится — куда звонить?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.022
+     },
+     {
+      "id": "Q06",
+      "question": "Когда заводят учётку новому работнику?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ],
+       [
+        "ACC-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.031
+     },
+     {
+      "id": "Q07",
+      "question": "На сколько дней дают переносной компьютер?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-2"
+       ],
+       [
+        "TR-3"
+       ],
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.032
+     },
+     {
+      "id": "Q08",
+      "question": "Как вернуть выданный ноутбук?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.028
+     },
+     {
+      "id": "Q09",
+      "question": "Что приложить к заявлению на въезд автомобиля?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.019
+     },
+     {
+      "id": "Q10",
+      "question": "Кто выдаёт разрешение заезжать на территорию на своей машине?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-4"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "Q11",
+      "question": "Как попасть на курсы повышения квалификации?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B2"
+       ],
+       [
+        "TR-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.025
+     },
+     {
+      "id": "Q12",
+      "question": "Что делать с удостоверением после обучения?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-3"
+       ],
+       [
+        "TR-4"
+       ],
+       [
+        "TR-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "Q13",
+      "question": "В какие часы нужно быть на связи при удалёнке?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-4"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.033
+     },
+     {
+      "id": "Q14",
+      "question": "Когда регистрировать отправляемые письма?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-2"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.051
+     },
+     {
+      "id": "Q15",
+      "question": "Во сколько открывается столовая?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CAN-2"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.051
+     },
+     {
+      "id": "Q16",
+      "question": "Как оформить пропуск для домашнего питомца?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B3"
+       ],
+       [
+        "CAN-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.065
+     },
+     {
+      "id": "Q17",
+      "question": "Сколько стоит курс английского языка?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.06
+     },
+     {
+      "id": "Q18",
+      "question": "Как подать заявку на отпуск по уходу за ребёнком?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "VIS-3"
+       ],
+       [
+        "VIS-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.069
+     },
+     {
+      "id": "Q19",
+      "question": "Кто оплачивает такси до аэропорта?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.041
+     },
+     {
+      "id": "Q20",
+      "question": "Где взять бланк авансового отчёта?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.021
+     }
+    ]
+   }
+  }
+ }
+}

@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import core, retrieval
 
 current_imported = retrieval.imported
-def previous_imported(db, question, k=3):
+def previous_imported(db, question, k=3, **_later_options):  # e.g. gate=; ignored by the frozen path
     # Previous search checked price before limiting the results.
     rows = current_imported(db, question, k=100)
     if re.search(r'цен[аыуеой]|стоимост|тариф', question.lower()):
