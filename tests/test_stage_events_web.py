@@ -21,8 +21,17 @@ INVENTORY = [['ПОРЯДОК проведения инвентаризации 
               '5. Если расхождений нет, акт подписывает только председатель комиссии.']]
 
 
+HIRING = [['ИНСТРУКЦИЯ по приёму работников (учебный вымышленный документ)',
+           '1. До приёма на работу',
+           '1.1. Кандидат заполняет анкету по форме ПР-1.',
+           '2. После оформления',
+           '2.1. Работник проходит вводный инструктаж по охране труда.',
+           '2.2. Руководитель знакомит работника с должностной инструкцией.']]
+
+
 def build(root):
-    return [write_pdf(root / 'inventory.pdf', INVENTORY)] + [write_pdf(root / n, p) for n, p in TRIP_COMPETITORS.items()]
+    return ([write_pdf(root / 'inventory.pdf', INVENTORY), write_pdf(root / 'hiring.pdf', HIRING)]
+            + [write_pdf(root / n, p) for n, p in TRIP_COMPETITORS.items()])
 
 
 class StageEventsWebTest(unittest.TestCase):
@@ -51,6 +60,13 @@ class StageEventsWebTest(unittest.TestCase):
                 self.assertTrue(under('После', 'в течение 3 рабочих дней'))
                 self.assertNotIn('путевой лист', page)
                 self.assertNotIn('смету поездок', page)
+
+    def test_items_of_a_heading_staged_section_are_steps(self):
+        # No listed verb ("проходит"): the section heading carries the stage.
+        page, under = self.staged('Что сделать до приёма на работу и после оформления?')
+        self.assertTrue(under('После', 'проходит вводный инструктаж'), page[-1500:])
+        self.assertTrue(under('До', 'по форме ПР-1'))
+        self.assertNotIn('Недостаточно данных', page)
 
     def test_unknown_event_is_refused(self):
         page, _ = self.staged('Что нужно сделать до отпуска и после него?')

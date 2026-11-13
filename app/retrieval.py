@@ -147,7 +147,7 @@ def coherent_candidates(db, question, parts):
         events = question_events(question)
         def staged_units(key):
             if key not in cache:
-                cache[key] = [u for u in version_units(db, *key, events=events) if u['stage'] and (u['facets'] or u['condition'] or u['marked'])]
+                cache[key] = [u for u in version_units(db, *key, events=events) if u['stage'] and (u['facets'] or u['condition'] or u['marked'] or u['step'])]
             return cache[key]
         grouped = {key: rows for key, rows in grouped.items() if staged_units(key)}
     if not grouped: return None

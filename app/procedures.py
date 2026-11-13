@@ -97,7 +97,8 @@ def question_events(question):
 def _event_patterns(events):
     if not events:
         return None, None
-    event = '(?:' + '|'.join(re.escape(e) for e in events) + r')\w*'
+    # Stems are normalised ё→е; document text keeps ё ("приёма").
+    event = '(?:' + '|'.join(re.escape(e).replace('е', '[её]') for e in events) + r')\w*'
     before = re.compile(r'\b(?:до|перед)\s+' + _EVENT_NOUN + event, re.I)
     after = re.compile(r'\bпосле\s+' + _EVENT_NOUN + event
                        + r'|\bпо\s+(?:итогам|результатам|окончании|завершении)\s+' + _EVENT_NOUN + event, re.I)
@@ -187,6 +188,7 @@ def version_units(db, source_id, version, events=()):
     rows = db.execute('SELECT rowid AS rowid, * FROM import_fragments WHERE source_id=? AND version=? ORDER BY rowid',
                       (source_id, version)).fetchall()
     units, section, seen = [], None, set()
+    by_heading = False  # the current stage comes from a section heading
     tables = {}  # table locator prefix -> header cells
     for row in rows:
         metadata = json.loads(row['metadata'] or '{}')
@@ -205,19 +207,25 @@ def version_units(db, source_id, version, events=()):
             heading = bool(_HEADING.match(text) or (kind == 'paragraph' and str(metadata.get('style') or '').lower().startswith(('heading', 'title', 'заголов'))))
             if heading:
                 section = _heading_stage(text, events)
+                by_heading = section is not None
                 continue
             if _APPENDIX_LIST.match(text):
                 section = None  # a list of appendices closes the procedure sections
+                by_heading = False
             key = re.sub(r'\s+', ' ', text.lower())
             if key in seen:
                 continue  # the OCR layer may repeat the text layer of a page
             seen.add(key)
             own = marker(text, events)
             unit_stage = own or section
+            # A numbered item of a section whose heading names the stage is a
+            # step of that stage in document order, whatever its verb (ANS-05).
+            step = bool(not own and by_heading and section and _NUMBERED.match(text))
             if own and kind != 'table_row':
                 # Following items of the same section continue the named stage
                 # until a heading or an item naming another stage.
                 section = own
+                by_heading = False
             facets = [name for name, pattern in FACETS if pattern.search(text)]
             if header:
                 for column, value in zip(header, metadata.get('cells', [])):
@@ -233,7 +241,7 @@ def version_units(db, source_id, version, events=()):
                           'stage': unit_stage, 'facets': facets, 'condition': bool(CONDITION.search(text)),
                           # A unit that itself names the stage ("После аттестации
                           # работник …") is a step even without a listed verb.
-                          'marked': bool(own),
+                          'marked': bool(own), 'step': step,
                           'metadata': metadata, 'rowid': row['rowid']})
     return units
 
@@ -247,7 +255,7 @@ def select_units(all_units, per_stage=10):
     """Keep units that state an action, form, deadline or condition of a stage."""
     selected = []
     for name in ('до', 'после'):
-        stage_units = [u for u in all_units if u['stage'] == name and (u['facets'] or u['condition'] or u.get('marked'))]
+        stage_units = [u for u in all_units if u['stage'] == name and (u['facets'] or u['condition'] or u.get('marked') or u.get('step'))]
         chosen = []
         # Make sure each facet present in the stage is represented, then fill in order.
         for facet, _ in FACETS:
@@ -290,7 +298,7 @@ def missing(items, question=None):
             if label not in wanted:
                 continue
             if not any(pattern.search(item['text']) or label in (item.get('facets') or [])
-                       or (label == 'действие' and item.get('marked')) for item in group):
+                       or (label == 'действие' and (item.get('marked') or item.get('step'))) for item in group):
                 out.append(f'{name}: {label}')
     return out
 
