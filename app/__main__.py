@@ -99,6 +99,42 @@ def render_support(support, import_meta, source_notes):
         content += '<p>Ограничение: ' + esc(note) + ' <a href="/fragment?id=' + quote(fid, safe='') + '">' + esc(fid) + '</a></p>'
     return content
 
+def render_rag(db, result, when):
+    """HTML of a verified RAG answer; every statement links to its chunk address."""
+    status = result['status']
+    if status == 'off_topic':
+        return ('<p>Вопрос не относится к внутренним документам и регламентам организации; '
+                'навигатор отвечает только по ним.</p>')
+    if status == 'insufficient' or not result['items']:
+        return '<p>Недостаточно данных для ответа в доступных материалах.</p>'
+    content = '<h2>Ответ</h2>'
+    if result['short_answer'] and not (len(result['items']) == 1 and result['short_answer'].strip(' .') == result['items'][0]['text'].strip(' .')):
+        content += '<h3>' + esc(result['short_answer']) + '</h3>'
+    content += '<ol>'
+    for item in result['items']:
+        content += '<li>' + esc(item['text']) + ''.join(cite(c['fragment_id'], {'start': c['start'], 'end': c['end']})
+                                                       for c in item['chunks']) + '</li>'
+    content += '</ol>'
+    # The model fills "missing" with noise on full answers: a gap is shown only
+    # when it declared the answer partial.
+    if status == 'partial':
+        content += '<p>Недостаточно данных для части вопроса: ' + esc('; '.join(result['missing']) or 'см. вопрос') + '.</p>'
+    if result['dropped']:
+        content += ('<p>Самопроверка: ' + str(len(result['dropped'])) + ' утвержд. модели не подтверждены текстом '
+                    'источников и не показаны.</p>')
+    keys = list(dict.fromkeys((c['source_id'], c['version']) for item in result['items'] for c in item['chunks']))
+    for key in keys:
+        if result['headers'].get(key):
+            content += '<p>Источник: ' + esc(result['headers'][key]) + '.</p>'
+    from .requisites import status as version_status
+    for _, (state, notes) in version_status(db, keys, when).items():
+        for note, fid in notes:
+            content += '<p>Ограничение: ' + esc(note) + (cite(fid) if fid else '') + '</p>'
+    content += ('<p>Применимость и полнота проверены по тексту найденных документов; ответ сформирован локальной '
+                'моделью и проверен по цитатам; сверьте источник.</p>')
+    return content
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass  # Questions and document text are not logged.
@@ -189,6 +225,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self.page(self.form(question) + '<p>Введите вопрос.</p>', 400)
             with closing(connect_existing(DB)) as db, db:
                 tables = {r['name'] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                from . import rag
+                if rag.enabled() and 'import_fragments' in tables:
+                    # RAG pipeline (stage R5); None → the extractive pipeline below.
+                    rag_when = fields.get('date', [''])[0] or None
+                    if rag_when:
+                        from .evidence import iso
+                        iso(rag_when)
+                    rag_result = rag.answer(db, question, rag_when)
+                    if rag_result is not None:
+                        return self.page(self.form(question) + render_rag(db, rag_result, rag_when))
                 if 'evidence_topics' in tables and 'import_fragments' in tables:
                     from .evidence import query as evidence_query, keyword_matches
                     from .questions import split_question
