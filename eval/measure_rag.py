@@ -157,12 +157,20 @@ def answers(cases, env, db, needles):
             body = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', page.split('</form>', 1)[-1])))
             cited, unsupported, claims = [], [], 0
             for item in parsed.items:
-                texts = []
+                texts, rows = [], {}
                 for href in item['hrefs']:
                     q = parse_qs(urlsplit(href).query)
                     fid = q.get('id', [''])[0]
                     unit = unit_text(db, fid, q.get('at', [None])[0])
-                    texts.append(unit); cited.append((fid, unit))
+                    texts.append(unit)
+                    # Cells of one sheet row are one citation (the row), not one per cell.
+                    row = re.match(r'(.*#sheet/[^/]+/cell/)[A-Z]+(\d+)$', fid)
+                    if row:
+                        key = row.group(1) + row.group(2)
+                        if key in rows:
+                            i = rows[key]; cited[i] = (cited[i][0], cited[i][1] + ' ' + unit); continue
+                        rows[key] = len(cited)
+                    cited.append((fid, unit))
                 if not texts or item['text'].strip().startswith(('Ограничение:', 'Источник:', 'Применимость')):
                     continue
                 claims += 1

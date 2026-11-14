@@ -129,6 +129,32 @@ def _norm(text):
     return re.sub(r'\s+', ' ', text.lower().replace('ё', 'е'))
 
 
+BRIDGE_FROM = 3
+
+
+def bridge_enabled():
+    return os.environ.get('NAVIGATOR_BRIDGE', '1').strip().lower() not in ('0', 'off', 'false', 'no')
+
+
+def bridge(db, question, found, when=None):
+    """Second retrieval hop: for each of the best chunks, the question plus that
+    chunk's text is searched again and the best chunk of *another* document is
+    taken. A rule that names a department or role («сдаёт в бухгалтерию»,
+    «подписывает финансодержатель») thus brings the table row or directory entry
+    that gives its office, phone or name."""
+    from . import chunk_search
+    have = {c['id'] for c in found}
+    out = []
+    for c in found[:BRIDGE_FROM]:
+        own = (c['source_id'], c['version'])
+        for b in chunk_search.search(db, question + '\n' + c['text'], k=10, when=when):
+            if b['id'] in have or (b['source_id'], b['version']) == own or b['meta'].get('kind') == 'toc':
+                continue
+            have.add(b['id']); out.append(b)
+            break
+    return out
+
+
 def build_context(db, question, when=None):
     """Numbered citable chunks: retrieved children plus siblings of their sections."""
     from . import chunk_search
@@ -148,6 +174,10 @@ def build_context(db, question, when=None):
         return True
     for c in found:                       # the retrieved chunks first, by rank
         add(c)
+    if bridge_enabled():                  # then a second hop to other documents (multi-hop)
+        for b in bridge(db, question, found, when):
+            add(b)
+            found.append(b)
     for c in list(found):                 # then their section siblings (parent-child)
         for s in db.execute('SELECT * FROM chunks WHERE parent_id=? AND level=2 ORDER BY ord', (c['parent_id'],)):
             s = dict(s); s['meta'] = json.loads(s['meta'] or '{}')

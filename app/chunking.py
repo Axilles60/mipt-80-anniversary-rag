@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS chunk_index (key TEXT PRIMARY KEY, value TEXT);
 '''
 # Changing how chunks or their full-text index are built bumps this value;
 # ensure() then rebuilds every version once.
-INDEX_VERSION = '2-stems-abbreviations'
+INDEX_VERSION = '3-sheet-row-cells'
 _TITLE_STYLES = ('title', 'heading', 'заголов', 'subtitle')
 # A template: blanks to fill in, or a capitalised FORM title (not "по форме КМ-7").
 _FORM = re.compile(r'_{4,}|«\s*_+\s*»|\bФОРМА\b')
@@ -256,7 +256,9 @@ def build(db, source_id, version, title=None):
                              'index_body': (' › '.join(parents) + ' › ' if parents else '') + body,
                              'section': sections[0], 'ord': ord_,
                              'meta': {'type': 'sheet_row', 'kind': 'norm', 'sheet': sheet_name, 'row': number,
-                                      'parents': parents}})
+                                      'parents': parents,
+                                      # every non-empty cell: a citation of the row must show all of them
+                                      'cells': [cid for cid, _, v in entries if v != '']}})
     doc_title = doc_title or ''
     out = []
     for p in sections:

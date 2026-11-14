@@ -111,9 +111,14 @@ def render_rag(db, result, when):
     if result['short_answer'] and not (len(result['items']) == 1 and result['short_answer'].strip(' .') == result['items'][0]['text'].strip(' .')):
         content += '<h3>' + esc(result['short_answer']) + '</h3>'
     content += '<ol>'
+    def links(chunk):
+        # A sheet row is several cell fragments: cite every cell, not only the first.
+        cells = (chunk.get('meta') or {}).get('cells')
+        if cells:
+            return ''.join(cite(cid) for cid in cells)
+        return cite(chunk['fragment_id'], {'start': chunk['start'], 'end': chunk['end']})
     for item in result['items']:
-        content += '<li>' + esc(item['text']) + ''.join(cite(c['fragment_id'], {'start': c['start'], 'end': c['end']})
-                                                       for c in item['chunks']) + '</li>'
+        content += '<li>' + esc(item['text']) + ''.join(links(c) for c in item['chunks']) + '</li>'
     content += '</ol>'
     # The model fills "missing" with noise on full answers: a gap is shown only
     # when it declared the answer partial.

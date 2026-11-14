@@ -75,6 +75,11 @@ class ChunkingTest(unittest.TestCase):
         row = next(c for c in self.children() if c['meta'].get('type') == 'sheet_row' and 'Отдел учёта' in c['text'])
         self.assertIn('Дирекция ›', row['index_text'])                     # parent row path
         self.assertIn('Название: Отдел учёта', row['text'])
+        # A row citation covers every cell (code, name, level), not only the first one.
+        cells = [self.con.execute('SELECT text FROM import_fragments WHERE id=?', (cid,)).fetchone()['text']
+                 for cid in row['meta']['cells']]
+        self.assertEqual(len(cells), 3)
+        self.assertTrue(any('110' in c for c in cells) and any('Отдел учёта' in c for c in cells))
 
 
 if __name__ == '__main__':
