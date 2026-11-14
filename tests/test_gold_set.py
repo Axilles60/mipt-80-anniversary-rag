@@ -16,6 +16,8 @@ class GoldSetTest(unittest.TestCase):
     def test_covers_required_question_kinds(self):
         sets, _ = check_gold.check()
         for name, rows in sets.items():
+            if name not in ('tuning', 'holdout'):
+                continue        # later evaluation sets are smaller and targeted
             kinds = Counter(x['type'] for x in rows)
             expects = Counter(x['expect'] for x in rows)
             for kind in ('multihop', 'fact', 'false_premise', 'invalid', 'negative', 'offtopic', 'injection',

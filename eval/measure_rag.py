@@ -258,7 +258,7 @@ def quick(cases):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--split', choices=['tuning', 'holdout'], required=True)
+    p.add_argument('--split', choices=['tuning', 'holdout', 'holdout2'], required=True)
     p.add_argument('--config', action='append', default=[], help='name=VAR=value;VAR=value')
     p.add_argument('--report', required=True)
     p.add_argument('--only', help='comma-separated question IDs')

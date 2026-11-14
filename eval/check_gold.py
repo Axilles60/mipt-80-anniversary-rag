@@ -1,4 +1,4 @@
-"""Check the labelling of the gold question sets fixtures/rag/{tuning,holdout}.json.
+"""Check the labelling of the gold question sets fixtures/rag/{tuning,holdout,holdout2}.json.
 
   python eval/check_gold.py          # prints counts by type and problems; exit 1 if any
 
@@ -19,6 +19,7 @@ import re
 import sys
 
 FIX = Path(__file__).resolve().parents[1] / 'fixtures' / 'rag'
+SETS = ('tuning', 'holdout', 'holdout2')
 EXPECTS = {'answer', 'partial', 'insufficient', 'off_topic'}
 # The repealing order quotes the repealed order's requisites verbatim.
 KNOWN_OVERLAPS = {('PO-REQ', 'PN-2')}
@@ -47,7 +48,7 @@ def corpus_units():
 
 def check():
     units, needles = corpus_units()
-    sets = {s: json.loads((FIX / f'{s}.json').read_text(encoding='utf-8')) for s in ('tuning', 'holdout')}
+    sets = {s: json.loads((FIX / f'{s}.json').read_text(encoding='utf-8')) for s in SETS if (FIX / f'{s}.json').exists()}
     problems = [f'needle of {k} occurs in {o}' for k, n in needles.items() for o, t in units.items()
                 if o != k and n in norm(t) and (k, o) not in KNOWN_OVERLAPS]
     every = [x for rows in sets.values() for x in rows]
