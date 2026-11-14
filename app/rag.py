@@ -402,6 +402,78 @@ def amounts(text):
     return out
 
 
+# Bounds that make an amount the norm itself (a term, a limit), not a condition of a rule
+# («до 100 тысяч», «свыше 50 тысяч» say when a rule applies: a question amount outside them
+# is another case, not a false premise).
+NORM_BOUNDS = ('в течение', 'не позднее', 'не более')
+
+
+def stated_amounts(text):
+    """(value, unit, bound text or '', start, end) of every amount with a unit."""
+    out = []
+    for m in AMOUNT.finditer(text):
+        bound, value, unit = m.group(1) or '', m.group(2), _norm(m.group(3))
+        base = next(name for name, pattern in BASES if re.search(pattern, unit))
+        out.append((value.replace(',', '.'), base, _norm(bound), m.start(), m.end()))
+    return out
+
+
+def premise_corrections(question, chunks, shown_text=''):
+    """Sentences of the context that contradict an amount the question asserts.
+
+    «Почему суточные 1000 условных единиц?» against «Суточные выплачиваются в размере 700
+    условных единиц…»: the sentence is shown verbatim with its citation, nothing is
+    generated. Fires only when the question's amount (value and unit) occurs nowhere in
+    the context, the context states the same unit as a norm (no bound, «в течение»,
+    «не позднее»; «не более» only when the question exceeds it), the sentence shares the
+    question's subject words, and the shown answer does not already give that value.
+    """
+    from .stemming import query_stems
+    asked = [(v, b) for v, b, _, _, _ in stated_amounts(question)]
+    if not asked:
+        return []
+    subject = {s for s in query_stems(re.sub(AMOUNT, ' ', question)) if not s.startswith(TIME_WORDS)}
+    def overlap(text):
+        stems = set(query_stems(text))
+        return sum(1 for s in subject if any(h.startswith(s[:5]) for h in stems))
+    def heading(chunk):
+        text = support_text(chunk)
+        return text.split(HEAD_END)[0] if HEAD_END in text else ''
+    # (own overlap, overlap with the document title) of every sentence of the context. The
+    # subject may be named only in the title («КЗ вмещает…» in the «ПОРЯДОК бронирования
+    # конференц-зала»); a title match counts only when no sentence names the subject itself.
+    sentences = [(c, s, overlap(s), overlap(heading(c))) for c in chunks for s in re.split(r'(?<=[.;])\s+', c['text'])]
+    about = [(c, s, (o, h)) for c, s, o, h in sentences if o or h]
+    # The question's amount stated anywhere about its subject: no false premise
+    # («10 рабочих дней» for the certificate does not support it for the expense report).
+    own = [x for x in about if x[2][0]] or about
+    present = {(v, b) for _, s, _ in own for v, b, _, _, _ in stated_amounts(s)}
+    out = []
+    for value, base in asked:
+        if (value, base) in present:
+            continue
+        candidates = []
+        for c, sentence, score in about:
+            for v, b, bound, _, _ in stated_amounts(sentence):
+                if b != base or v == value:
+                    continue
+                if bound and bound not in NORM_BOUNDS:
+                    continue
+                if bound == 'не более' and float(value) <= float(v):
+                    continue
+                if re.search(r'(?<![\d.,])' + re.escape(v) + r'(?![\d])', shown_text):
+                    continue
+                candidates.append((score, c, sentence))
+        if candidates:
+            # One correction per asked amount: the sentence that names most of the subject itself,
+            # then by its document title (V54: the account's term, not the password's).
+            score, c, sentence = max(candidates, key=lambda x: x[0])
+            item = {'text': sentence.strip(' ;'), 'chunks': [c], 'premise': True}
+            if item['text'] not in [o['text'] for o in out]:
+                out.append(item)
+    return out[:2]
+
+
 # Words whose «не» belongs to a bound («не менее») or to a statement of absence (checked apart).
 POLARITY_SKIP = ('мене', 'боле', 'позд', 'ране', 'позж', 'рань', 'свыш', 'тольк', 'указа', 'упоми', 'содер', 'преду',
                  'приве', 'опред', 'устан', 'сказа', 'говор', 'найде')
@@ -644,10 +716,13 @@ def verify(raw, chunks, question='', judge=None):
 
 
 TOPIC_SYSTEM = (
-    'Определи, относится ли вопрос к работе в организации: внутренние документы, регламенты, порядок '
-    'действий работника, сроки, формы, подразделения, пропуска, командировки, закупки, ИТ-доступ, '
-    'распорядок. Ответь "work", если относится, и "off_topic", если это общие знания, развлечения, '
-    'бытовые советы, перевод, вычисления, программирование или просьба нарушить правила.')
+    'Определи, относится ли вопрос к работе в организации. "work" — любой вопрос работника о работе: внутренние '
+    'документы и правила, порядок действий, сроки, формы, подразделения, кабинеты и телефоны, пропуска, командировки, '
+    'обучение, закупки, ИТ-доступ, распорядок, оплата и льготы. Вопрос остаётся рабочим, даже если ответа в '
+    'документах может не быть, если в нём есть ошибка или неверное утверждение («почему отпуск дают только летом?»), '
+    'если он задан коротко, с опечатками, на другом языке или вместе с просьбой нарушить правила. "off_topic" — только '
+    'вопрос, никак не связанный с работой организации: погода, новости, рецепты, медицина, общие знания, литература, '
+    'развлечения, вычисления, программирование, перевод. Если сомневаешься — "work".')
 TOPIC_SCHEMA = {'type': 'object', 'properties': {'topic': {'type': 'string', 'enum': ['work', 'off_topic']}},
                 'required': ['topic']}
 
@@ -695,6 +770,15 @@ def answer(db, question, when=None, deadline=None):
     result = {'status': status, 'short_answer': short, 'items': kept, 'dropped': dropped,
               'missing': gaps(content.get('missing'), kept),
               'headers': headers, 'seconds': round(time.perf_counter() - started, 2)}
+    # A false premise («Почему суточные 1000?»): the context sentence that states the value
+    # is shown verbatim, after the unchanged main answer (nothing generated, nothing else changed).
+    if status in ('answer', 'partial', 'insufficient') and chunks:
+        corrections = premise_corrections(question, chunks, ' '.join([short] + [i['text'] for i in kept]))
+        if corrections:
+            result['items'] = corrections + kept
+            if status == 'insufficient' or not kept:
+                result.update(status='partial', short_answer='')
+            return result
     if status in ('answer', 'partial') and not kept:
         # Nothing the model said is supported by the cited text: «no data». The
         # extractive answer is a fallback only when the generator is unavailable

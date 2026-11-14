@@ -63,6 +63,11 @@ class CrossEncoder:
         self.tokenizer = tokenizer
         options = onnxruntime.SessionOptions()
         options.log_severity_level = 3
+        # NAVIGATOR_ORT_THREADS: threads per session (0 = all cores). Parallel evaluation runs on one
+        # machine set it so that their sessions do not fight for the same cores.
+        threads = os.environ.get('NAVIGATOR_ORT_THREADS', '').strip()
+        if threads.isdigit() and int(threads) > 0:
+            options.intra_op_num_threads = int(threads)
         self.session = onnxruntime.InferenceSession(str(model), options, providers=['CPUExecutionProvider'])
         self.inputs = {i.name for i in self.session.get_inputs()}
 
