@@ -409,12 +409,10 @@ def render_rag(db, result, when, question=''):
         # The reply was cut off at the model's output limit: only its whole, checked statements are shown.
         content += ('<p class="n-fail">Ответ оказался длиннее, чем модель выдаёт за один раз: показана его '
                     'проверенная часть. Уточните вопрос, чтобы получить остальное.</p>')
-    # The model fills "missing" with noise on full answers: a gap is shown only
-    # when it declared the answer partial.
-    if status == 'partial':
-        # A fixed line, not the model's free text: its «what is missing» is checked by nothing and
-        # contradicted the answer («кабинет не указан» beside «кабинет — 310»; external audit of d0bba9b).
-        content += '<p>Недостаточно данных для части вопроса: в найденных документах нет подтверждённых сведений о ней.</p>'
+    # No «Недостаточно данных для части вопроса» line from the model's status: the model declares
+    # «partial» on nearly every answer, so the line stood under full answers too, and its free text
+    # contradicted them (external audit of d0bba9b). What the code itself could not confirm is said
+    # by the «Самопроверка» line below.
     # Then the fragments the answer rests on, verbatim — what a reader checks the answer against.
     # Blocks, not <p>/<li>: they are quotes of the documents, not statements of the answer.
     chunks = list({c['id']: c for item in result['items'] for c in item['chunks']}.values())
