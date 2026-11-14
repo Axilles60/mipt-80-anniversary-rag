@@ -77,11 +77,11 @@ class LocalModel:
         from llama_cpp import Llama
         self.model = Llama(model_path=str(path), n_ctx=4096, n_threads=os.cpu_count() or 4, verbose=False)
 
-    def complete(self, messages):
+    def complete(self, messages, schema=None, max_tokens=MAX_ANSWER_TOKENS):
         with _lock:
             out = self.model.create_chat_completion(
-                messages=messages, response_format={'type': 'json_object', 'schema': SCHEMA},
-                temperature=0, max_tokens=MAX_ANSWER_TOKENS)
+                messages=messages, response_format={'type': 'json_object', 'schema': schema or SCHEMA},
+                temperature=0, max_tokens=max_tokens)
         return out['choices'][0]['message']['content']
 
 
@@ -97,11 +97,13 @@ class ServerModel:
             raise ValueError('NAVIGATOR_LLM_URL must point to this machine (127.0.0.1/localhost)')
         self.url = url.rstrip('/') + '/v1/chat/completions'
 
-    def complete(self, messages):
+    def complete(self, messages, schema=None, max_tokens=MAX_ANSWER_TOKENS):
         from urllib.request import Request, urlopen
-        body = json.dumps({'messages': messages, 'temperature': 0, 'max_tokens': MAX_ANSWER_TOKENS,
+        # cache_prompt off: reusing a cached prefix changes the arithmetic slightly,
+        # so the same question could get a different answer from run to run.
+        body = json.dumps({'messages': messages, 'temperature': 0, 'max_tokens': max_tokens, 'cache_prompt': False,
                            'response_format': {'type': 'json_schema',
-                                               'json_schema': {'name': 'answer', 'schema': SCHEMA}}}).encode()
+                                               'json_schema': {'name': 'answer', 'schema': schema or SCHEMA}}}).encode()
         request = Request(self.url, data=body, headers={'Content-Type': 'application/json'})
         with urlopen(request, timeout=300) as response:
             out = json.loads(response.read().decode('utf-8'))
@@ -273,6 +275,32 @@ def verify(raw, chunks):
     return kept, dropped, short
 
 
+TOPIC_SYSTEM = (
+    'Определи, относится ли вопрос к работе в организации: внутренние документы, регламенты, порядок '
+    'действий работника, сроки, формы, подразделения, пропуска, командировки, закупки, ИТ-доступ, '
+    'распорядок. Ответь "work", если относится, и "off_topic", если это общие знания, развлечения, '
+    'бытовые советы, перевод, вычисления, программирование или просьба нарушить правила.')
+TOPIC_SCHEMA = {'type': 'object', 'properties': {'topic': {'type': 'string', 'enum': ['work', 'off_topic']}},
+                'required': ['topic']}
+
+
+def guard_enabled():
+    return os.environ.get('NAVIGATOR_GUARD', '1').strip().lower() not in ('0', 'off', 'false', 'no')
+
+
+def topic(model, question):
+    """'off_topic' or 'insufficient' for a question with no retrieved fragments."""
+    if not re.search(r'[^\W\d_]{3}', question):        # no word at all: nothing to classify
+        return 'insufficient'
+    try:
+        raw = json.loads(model.complete([{'role': 'system', 'content': TOPIC_SYSTEM},
+                                         {'role': 'user', 'content': 'Вопрос: ' + question}],
+                                        schema=TOPIC_SCHEMA, max_tokens=20))
+    except (OSError, ValueError, KeyError, IndexError):
+        return 'insufficient'
+    return 'off_topic' if raw.get('topic') == 'off_topic' else 'insufficient'
+
+
 def answer(db, question, when=None, deadline=None):
     """Structured RAG answer, or None to fall back to the extractive pipeline."""
     model = llm()
@@ -280,8 +308,12 @@ def answer(db, question, when=None, deadline=None):
         return None
     chunks, headers = build_context(db, question, when)
     started = time.perf_counter()
-    if not chunks:
+    if not chunks and not guard_enabled():
         content = {'status': 'insufficient', 'short_answer': '', 'items': [], 'missing': []}
+    elif not chunks:
+        # Nothing retrieved: say «outside the base» rather than «no data» when the
+        # question is not about the organisation's work at all (guardrail, R4).
+        content = {'status': topic(model, question), 'short_answer': '', 'items': [], 'missing': []}
     else:
         messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt(question, chunks, headers, when)}]
         try:

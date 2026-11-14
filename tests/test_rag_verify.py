@@ -34,5 +34,29 @@ class VerifyTest(unittest.TestCase):
         self.assertEqual([c['id'] for c in kept[0]['chunks']], [3])
 
 
+class TopicModel:
+    def __init__(self, reply): self.reply, self.calls = reply, 0
+    def complete(self, messages, schema=None, max_tokens=None):
+        self.calls += 1
+        if isinstance(self.reply, Exception): raise self.reply
+        return self.reply
+
+
+class TopicTest(unittest.TestCase):
+    def test_off_topic_when_model_says_so(self):
+        self.assertEqual(rag.topic(TopicModel('{"topic": "off_topic"}'), 'Посоветуй рецепт борща.'), 'off_topic')
+
+    def test_work_question_without_fragments_is_no_data(self):
+        self.assertEqual(rag.topic(TopicModel('{"topic": "work"}'), 'Как оформить больничный?'), 'insufficient')
+
+    def test_no_words_is_not_classified(self):
+        model = TopicModel('{"topic": "off_topic"}')
+        self.assertEqual(rag.topic(model, '???'), 'insufficient')
+        self.assertEqual(model.calls, 0)
+
+    def test_failure_is_no_data(self):
+        self.assertEqual(rag.topic(TopicModel(OSError('down')), 'Расскажи анекдот'), 'insufficient')
+
+
 if __name__ == '__main__':
     unittest.main()
