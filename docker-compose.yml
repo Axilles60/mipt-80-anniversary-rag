@@ -1,0 +1,73 @@
+# Two ways to run the navigator with the RAG answer; documents go to ./data/originals.
+# Other folders (e.g. the fictional demo corpus of the README use cases):
+#   NAVIGATOR_ORIGINALS_DIR=./data/demo/originals NAVIGATOR_INDEX_DIR=./data/demo/index docker compose ...
+# On Linux the index folder must be writable by the container user: NAVIGATOR_UID=$(id -u) NAVIGATOR_GID=$(id -g).
+#
+#   docker compose --profile gpu up --build     # recommended: generator on an NVIDIA GPU (~3 s per answer)
+#   docker compose --profile cpu up --build     # no NVIDIA GPU: one container, generator on CPU (tens of seconds)
+#
+# The gpu profile needs an NVIDIA driver with CUDA 12.4+ and the NVIDIA Container
+# Toolkit (Docker Desktop: WSL2 with GPU support). Both profiles publish the
+# web interface on 127.0.0.1:8000 only; the generator is reachable only inside
+# the compose network. Nothing leaves the machine.
+x-navigator: &navigator
+  build:
+    context: .
+    args:
+      WITH_RAG: "1"
+      PIPELINE: rag
+      RETRIEVAL: hybrid
+  image: employee-navigator:rag
+  user: "${NAVIGATOR_UID:-10001}:${NAVIGATOR_GID:-10001}"
+  ports:
+    - "127.0.0.1:8000:8000"
+  volumes:
+    - ${NAVIGATOR_ORIGINALS_DIR:-./data/originals}:/data/originals:ro
+    - ${NAVIGATOR_INDEX_DIR:-./data/index}:/data/index
+
+services:
+  navigator:
+    <<: *navigator
+    profiles: ["cpu"]
+
+  navigator-gpu:
+    <<: *navigator
+    profiles: ["gpu"]
+    build:
+      context: .
+      args:
+        WITH_RAG: "1"
+        LOCAL_LLM: "0"          # the generator runs in the llm service on the GPU
+        PIPELINE: rag
+        RETRIEVAL: hybrid
+    image: employee-navigator:rag-gpu
+    environment:
+      NAVIGATOR_LLM_URL: http://llm:8080
+    depends_on:
+      llm:
+        condition: service_healthy
+
+  llm:
+    profiles: ["gpu"]
+    build:
+      context: .
+      dockerfile: Dockerfile.llm-gpu
+      args:
+        LLM: qwen3
+    image: employee-navigator-llm:gpu
+    # 2 slots of 16384 tokens each: real regulations give prompts of 5-6 thousand tokens, which did not
+    # fit into 4 slots of 4096 (the request was refused and the extractive answer shown instead).
+    command: ["-m", "/models/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf", "-ngl", "99", "-c", "32768", "-np", "2",
+              "--host", "0.0.0.0", "--port", "8080"]
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

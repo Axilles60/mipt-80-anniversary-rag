@@ -1,0 +1,28 @@
+{
+  "documents": [
+    {"file":"route.docx","version":"old","fragments":[
+      {"id":"OLD1","text":"Маршрут Лазурь: заявление подают за десять рабочих дней."},
+      {"id":"OLD2","text":"Маршрут Лазурь: к заявлению прилагают синюю карточку."}]},
+    {"file":"route.docx","version":"new","fragments":[
+      {"id":"NEW1","text":"Маршрут Лазурь: заявление подают за пять рабочих дней."}]},
+    {"file":"similar.docx","version":"only","fragments":[
+      {"id":"SIMILAR","text":"Маршрут Лазурный: заявление передают в зелёный отдел."}]},
+    {"file":"access.docx","version":"only","fragments":[
+      {"id":"GENERAL","text":"Пропуск Орбита: постоянные сотрудники предъявляют синюю карточку."},
+      {"id":"EXCEPTION","text":"Пропуск Орбита: гости вместо карточки предъявляют временный талон."}]}
+  ],
+  "topics":[
+    {"id":"route","keywords":["маршрут лазурь"]},
+    {"id":"similar","keywords":["маршрут лазурный"]},
+    {"id":"access","keywords":["пропуск орбита"]}
+  ],
+  "rules":[
+    {"id":"old-1","fragment":"OLD1","topic":"route","start":"2020-01-01"},
+    {"id":"old-2","fragment":"OLD2","topic":"route","start":"2020-01-01"},
+    {"id":"new-1","fragment":"NEW1","topic":"route","start":"2022-01-01"},
+    {"id":"similar-1","fragment":"SIMILAR","topic":"similar","start":"2020-01-01"},
+    {"id":"general","fragment":"GENERAL","topic":"access","start":"2020-01-01","exceptions":{"категория":"гость"}},
+    {"id":"exception","fragment":"EXCEPTION","topic":"access","start":"2020-01-01","conditions":{"категория":"гость"}}
+  ],
+  "relations":[{"id":"amendment","kind":"amends_rule","origin":"new-1","target":"old-1","basis":"NEW1"}]
+}

@@ -1,0 +1,63 @@
+{
+ "data": "synthetic",
+ "scan_px": [
+  1754,
+  1240
+ ],
+ "runs": [
+  {
+   "font_px": 12,
+   "dpi": 144,
+   "amounts": 36,
+   "exact": 0
+  },
+  {
+   "font_px": 12,
+   "dpi": 300,
+   "amounts": 36,
+   "exact": 36
+  },
+  {
+   "font_px": 12,
+   "dpi": 400,
+   "amounts": 36,
+   "exact": 29
+  },
+  {
+   "font_px": 14,
+   "dpi": 144,
+   "amounts": 36,
+   "exact": 30
+  },
+  {
+   "font_px": 14,
+   "dpi": 300,
+   "amounts": 36,
+   "exact": 35
+  },
+  {
+   "font_px": 14,
+   "dpi": 400,
+   "amounts": 36,
+   "exact": 32
+  },
+  {
+   "font_px": 16,
+   "dpi": 144,
+   "amounts": 36,
+   "exact": 34
+  },
+  {
+   "font_px": 16,
+   "dpi": 300,
+   "amounts": 36,
+   "exact": 36
+  },
+  {
+   "font_px": 16,
+   "dpi": 400,
+   "amounts": 36,
+   "exact": 36
+  }
+ ]
+}

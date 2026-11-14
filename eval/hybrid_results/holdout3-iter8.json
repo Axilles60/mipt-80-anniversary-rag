@@ -1,0 +1,1139 @@
+{
+ "split": "holdout3",
+ "k": 5,
+ "data": "synthetic",
+ "cases": 20,
+ "modes": {
+  "bm25": {
+   "status": {
+    "mode": "bm25"
+   },
+   "ranking": {
+    "positive_cases": 13,
+    "expected_paragraphs": 13,
+    "recall@1": 0.923,
+    "recall@3": 0.923,
+    "recall@5": 0.923,
+    "mrr": 0.923,
+    "ndcg@5": 0.923
+   },
+   "negatives_with_candidates": 6,
+   "top5": {
+    "P01": [
+     [
+      "VIS-5"
+     ]
+    ],
+    "P02": [
+     [
+      "VIS-3"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-4"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ]
+    ],
+    "P03": [
+     [
+      "CON-2"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "CON-3"
+     ],
+     [
+      "CON-4"
+     ]
+    ],
+    "P04": [
+     [
+      "SICK-2"
+     ],
+     [
+      "ACC-5"
+     ],
+     [
+      "DOC-2"
+     ],
+     [
+      "VIS-3"
+     ]
+    ],
+    "P05": [
+     [
+      "SICK-4"
+     ],
+     [
+      "SICK-1"
+     ],
+     [
+      "SICK-2"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "P06": [
+     [
+      "ACC-2"
+     ],
+     [
+      "REM-3"
+     ]
+    ],
+    "P07": [
+     [
+      "ACC-5"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "P08": [
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "VIS-3"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "P09": [
+     [
+      "PARK-4"
+     ],
+     [
+      "PARK-2"
+     ]
+    ],
+    "P10": [
+     [
+      "TR-4"
+     ],
+     [
+      "sheet/Бюджет/cell/A2"
+     ],
+     [
+      "CON-3"
+     ],
+     [
+      "TR-1"
+     ],
+     [
+      "TR-2"
+     ]
+    ],
+    "P11": [
+     [
+      "REM-3"
+     ],
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "REM-2"
+     ],
+     [
+      "DOC-2"
+     ],
+     [
+      "SICK-4"
+     ]
+    ],
+    "P12": [
+     [
+      "DOC-3"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "P13": [
+     [
+      "CAN-1"
+     ],
+     [
+      "CAN-2"
+     ]
+    ],
+    "N01": [
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "CAN-3"
+     ]
+    ],
+    "N02": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "TR-2"
+     ]
+    ],
+    "N03": [
+     [
+      "VIS-3"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "ACC-4"
+     ],
+     [
+      "TR-2"
+     ]
+    ],
+    "N04": [],
+    "N05": [
+     [
+      "CON-1"
+     ],
+     [
+      "VIS-1"
+     ],
+     [
+      "CON-2"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "REM-2"
+     ]
+    ],
+    "N06": [
+     [
+      "CAN-3"
+     ]
+    ],
+    "N07": [
+     [
+      "CON-2"
+     ],
+     [
+      "REM-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-3"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ]
+   },
+   "answers": {
+    "correct_answers": 11,
+    "false_answers": 4,
+    "missed_answers": 2,
+    "correct_refusals": "3/7",
+    "citation_precision": 0.333,
+    "broken_links": 0,
+    "mean_seconds": 0.017,
+    "results": [
+     {
+      "id": "P01",
+      "question": "Нужно ли сопровождать гостя по зданию?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-5"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.04
+     },
+     {
+      "id": "P02",
+      "question": "Через какой портал подают заявку на допуск посетителя?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-3"
+       ],
+       [
+        "VIS-2"
+       ],
+       [
+        "VIS-4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.023
+     },
+     {
+      "id": "P03",
+      "question": "На какой срок оформляют допуск работникам подрядчика?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.016
+     },
+     {
+      "id": "P04",
+      "question": "Кому сообщить в первый день болезни?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-2"
+       ],
+       [
+        "ACC-5"
+       ],
+       [
+        "DOC-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.024
+     },
+     {
+      "id": "P05",
+      "question": "Кто начисляет пособие по нетрудоспособности?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-4"
+       ],
+       [
+        "SICK-2"
+       ],
+       [
+        "SICK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.003
+     },
+     {
+      "id": "P06",
+      "question": "Как восстановить доступ к корпоративной почте?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "REM-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.003
+     },
+     {
+      "id": "P07",
+      "question": "Когда блокируют учётную запись при увольнении?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ],
+       [
+        "ACC-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "P08",
+      "question": "Где оформить заявку на получение техники?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "P09",
+      "question": "Можно ли ставить машину на территории ночью?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-4"
+       ],
+       [
+        "PARK-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.014
+     },
+     {
+      "id": "P10",
+      "question": "Кто согласует внеплановое обучение?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-4"
+       ],
+       [
+        "TR-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.019
+     },
+     {
+      "id": "P11",
+      "question": "Через что подключаться к системам вне офиса?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-3"
+       ],
+       [
+        "REM-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.014
+     },
+     {
+      "id": "P12",
+      "question": "Кто передаёт входящую корреспонденцию исполнителю?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-3"
+       ],
+       [
+        "TR-3"
+       ],
+       [
+        "SICK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.004
+     },
+     {
+      "id": "P13",
+      "question": "Как расплатиться в столовой?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.017
+     },
+     {
+      "id": "N01",
+      "question": "Как получить пропуск в спортзал?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/A3"
+       ],
+       [
+        "sheet/Бюджет/cell/B3"
+       ],
+       [
+        "CAN-3"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.021
+     },
+     {
+      "id": "N02",
+      "question": "Какие курсы иностранных языков оплачивает организация?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.014
+     },
+     {
+      "id": "N03",
+      "question": "Как подать заявку на материальную помощь?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "VIS-3"
+       ],
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ],
+       [
+        "VIS-2"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "N04",
+      "question": "Кто выдаёт справку о доходах?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.012
+     },
+     {
+      "id": "N05",
+      "question": "Как оформить допуск к государственной тайне?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CON-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "N06",
+      "question": "Где получить новую банковскую карту для зарплаты?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CAN-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.016
+     },
+     {
+      "id": "N07",
+      "question": "Сколько дней длится испытательный срок?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.017
+     }
+    ]
+   }
+  },
+  "hybrid": {
+   "status": {
+    "mode": "hybrid",
+    "model": "multilingual-e5-small@470268510",
+    "min_z": 2.5,
+    "gate_z": 1.2
+   },
+   "ranking": {
+    "positive_cases": 13,
+    "expected_paragraphs": 13,
+    "recall@1": 0.923,
+    "recall@3": 0.923,
+    "recall@5": 0.923,
+    "mrr": 0.923,
+    "ndcg@5": 0.923
+   },
+   "negatives_with_candidates": 5,
+   "top5": {
+    "P01": [
+     [
+      "VIS-5"
+     ],
+     [
+      "VIS-1"
+     ]
+    ],
+    "P02": [
+     [
+      "VIS-3"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-4"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ]
+    ],
+    "P03": [
+     [
+      "CON-2"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "VIS-3"
+     ],
+     [
+      "CON-4"
+     ]
+    ],
+    "P04": [
+     [
+      "SICK-2"
+     ],
+     [
+      "VIS-3"
+     ]
+    ],
+    "P05": [
+     [
+      "SICK-4"
+     ],
+     [
+      "SICK-1"
+     ],
+     [
+      "SICK-2"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "P06": [
+     [
+      "ACC-2"
+     ],
+     [
+      "REM-3"
+     ]
+    ],
+    "P07": [
+     [
+      "ACC-5"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "P08": [
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ]
+    ],
+    "P09": [
+     [
+      "PARK-4"
+     ],
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-1"
+     ]
+    ],
+    "P10": [
+     [
+      "TR-4"
+     ],
+     [
+      "TR-1"
+     ],
+     [
+      "TR-2"
+     ]
+    ],
+    "P11": [
+     [
+      "REM-3"
+     ],
+     [
+      "REM-2"
+     ],
+     [
+      "SICK-4"
+     ]
+    ],
+    "P12": [
+     [
+      "DOC-3"
+     ]
+    ],
+    "P13": [
+     [
+      "CAN-1"
+     ],
+     [
+      "CAN-2"
+     ]
+    ],
+    "N01": [
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "CAN-3"
+     ]
+    ],
+    "N02": [
+     [
+      "sheet/Бюджет/cell/B2"
+     ],
+     [
+      "TR-2"
+     ]
+    ],
+    "N03": [],
+    "N04": [],
+    "N05": [
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "CON-2"
+     ],
+     [
+      "VIS-3"
+     ]
+    ],
+    "N06": [
+     [
+      "CAN-3"
+     ]
+    ],
+    "N07": [
+     [
+      "CON-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "SICK-3"
+     ]
+    ]
+   },
+   "answers": {
+    "correct_answers": 11,
+    "false_answers": 3,
+    "missed_answers": 2,
+    "correct_refusals": "4/7",
+    "citation_precision": 0.393,
+    "broken_links": 0,
+    "mean_seconds": 0.128,
+    "results": [
+     {
+      "id": "P01",
+      "question": "Нужно ли сопровождать гостя по зданию?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-5"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 2.024
+     },
+     {
+      "id": "P02",
+      "question": "Через какой портал подают заявку на допуск посетителя?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-3"
+       ],
+       [
+        "VIS-2"
+       ],
+       [
+        "VIS-4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.021
+     },
+     {
+      "id": "P03",
+      "question": "На какой срок оформляют допуск работникам подрядчика?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.022
+     },
+     {
+      "id": "P04",
+      "question": "Кому сообщить в первый день болезни?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-2"
+       ],
+       [
+        "VIS-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.044
+     },
+     {
+      "id": "P05",
+      "question": "Кто начисляет пособие по нетрудоспособности?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-4"
+       ],
+       [
+        "SICK-2"
+       ],
+       [
+        "SICK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "P06",
+      "question": "Как восстановить доступ к корпоративной почте?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "REM-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.04
+     },
+     {
+      "id": "P07",
+      "question": "Когда блокируют учётную запись при увольнении?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ],
+       [
+        "ACC-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.033
+     },
+     {
+      "id": "P08",
+      "question": "Где оформить заявку на получение техники?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.021
+     },
+     {
+      "id": "P09",
+      "question": "Можно ли ставить машину на территории ночью?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-4"
+       ],
+       [
+        "PARK-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.034
+     },
+     {
+      "id": "P10",
+      "question": "Кто согласует внеплановое обучение?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-4"
+       ],
+       [
+        "TR-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.022
+     },
+     {
+      "id": "P11",
+      "question": "Через что подключаться к системам вне офиса?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-3"
+       ],
+       [
+        "REM-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.021
+     },
+     {
+      "id": "P12",
+      "question": "Кто передаёт входящую корреспонденцию исполнителю?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-3"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.04
+     },
+     {
+      "id": "P13",
+      "question": "Как расплатиться в столовой?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.018
+     },
+     {
+      "id": "N01",
+      "question": "Как получить пропуск в спортзал?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/A3"
+       ],
+       [
+        "sheet/Бюджет/cell/B3"
+       ],
+       [
+        "CAN-3"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.032
+     },
+     {
+      "id": "N02",
+      "question": "Какие курсы иностранных языков оплачивает организация?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.033
+     },
+     {
+      "id": "N03",
+      "question": "Как подать заявку на материальную помощь?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.02
+     },
+     {
+      "id": "N04",
+      "question": "Кто выдаёт справку о доходах?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.016
+     },
+     {
+      "id": "N05",
+      "question": "Как оформить допуск к государственной тайне?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "VIS-2"
+       ],
+       [
+        "CON-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.033
+     },
+     {
+      "id": "N06",
+      "question": "Где получить новую банковскую карту для зарплаты?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CAN-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.049
+     },
+     {
+      "id": "N07",
+      "question": "Сколько дней длится испытательный срок?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.018
+     }
+    ]
+   }
+  }
+ }
+}

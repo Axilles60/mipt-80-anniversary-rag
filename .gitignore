@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.venv/
+data/originals/
+data/index/
+data/models/
+data/runs/
+data/demo/
+.DS_Store
+.claude/

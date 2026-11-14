@@ -1,0 +1,1015 @@
+{
+ "split": "holdout",
+ "k": 5,
+ "data": "synthetic",
+ "cases": 20,
+ "modes": {
+  "bm25": {
+   "status": {
+    "mode": "bm25"
+   },
+   "ranking": {
+    "positive_cases": 15,
+    "expected_paragraphs": 17,
+    "recall@1": 0.471,
+    "recall@3": 0.529,
+    "recall@5": 0.529,
+    "mrr": 0.567,
+    "ndcg@5": 0.575
+   },
+   "negatives_with_candidates": 3,
+   "top5": {
+    "H01": [],
+    "H02": [],
+    "H03": [
+     [
+      "REM-2"
+     ]
+    ],
+    "H04": [],
+    "H05": [
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "CAN-3"
+     ],
+     [
+      "CAN-1"
+     ],
+     [
+      "DOC-1"
+     ]
+    ],
+    "H06": [
+     [
+      "TR-4"
+     ],
+     [
+      "sheet/Бюджет/cell/B2"
+     ],
+     [
+      "CON-3"
+     ]
+    ],
+    "H07": [
+     [
+      "REM-2"
+     ],
+     [
+      "CAN-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-3"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "H08": [
+     [
+      "DOC-4"
+     ],
+     [
+      "CAN-1"
+     ],
+     [
+      "DOC-1"
+     ],
+     [
+      "ACC-1"
+     ],
+     [
+      "PARK-1"
+     ]
+    ],
+    "H09": [
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "H10": [
+     [
+      "sheet/Бюджет/cell/A5"
+     ],
+     [
+      "sheet/Бюджет/cell/B5"
+     ],
+     [
+      "PARK-1"
+     ],
+     [
+      "PARK-4"
+     ]
+    ],
+    "H11": [],
+    "H12": [
+     [
+      "REM-3"
+     ],
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "CAN-2"
+     ],
+     [
+      "DOC-2"
+     ],
+     [
+      "SICK-4"
+     ]
+    ],
+    "H13": [
+     [
+      "CON-4"
+     ],
+     [
+      "DOC-1"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "CON-2"
+     ],
+     [
+      "CON-3"
+     ]
+    ],
+    "H14": [
+     [
+      "PARK-2"
+     ]
+    ],
+    "H15": [
+     [
+      "SICK-4"
+     ]
+    ],
+    "H16": [
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ],
+     [
+      "ACC-3"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "H17": [
+     [
+      "ACC-5"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "H18": [
+     [
+      "DOC-3"
+     ],
+     [
+      "DOC-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "H19": [],
+    "H20": [
+     [
+      "CON-1"
+     ],
+     [
+      "TR-2"
+     ]
+    ]
+   },
+   "answers": {
+    "correct_answers": 9,
+    "false_answers": 5,
+    "missed_answers": 3,
+    "correct_refusals": "3/5",
+    "citation_precision": 0.3,
+    "broken_links": 0,
+    "mean_seconds": 0.015,
+    "results": [
+     {
+      "id": "H01",
+      "question": "Ко мне придёт партнёр на встречу, как оформить ему проход?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.047
+     },
+     {
+      "id": "H02",
+      "question": "Куда сообщить, что я на больничном?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.02
+     },
+     {
+      "id": "H03",
+      "question": "Нужен лэптоп на неделю, где его получить?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "REM-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.023
+     },
+     {
+      "id": "H04",
+      "question": "Не могу войти в почту, пароль не подходит",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.012
+     },
+     {
+      "id": "H05",
+      "question": "Какие документы нужны для пропуска на машину?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/A3"
+       ],
+       [
+        "sheet/Бюджет/cell/B3"
+       ],
+       [
+        "CAN-3"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "H06",
+      "question": "Кто согласует внеплановые курсы?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-4"
+       ],
+       [
+        "sheet/Бюджет/cell/B2"
+       ],
+       [
+        "CON-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.004
+     },
+     {
+      "id": "H07",
+      "question": "Сколько дней в неделю можно работать удалённо?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-2"
+       ],
+       [
+        "CAN-2"
+       ],
+       [
+        "TR-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.004
+     },
+     {
+      "id": "H08",
+      "question": "Кто заверяет копии документов?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-4"
+       ],
+       [
+        "DOC-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.012
+     },
+     {
+      "id": "H09",
+      "question": "Как получить материальную помощь на лечение?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ],
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.022
+     },
+     {
+      "id": "H10",
+      "question": "Сколько стоит место на стоянке?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/A5"
+       ],
+       [
+        "sheet/Бюджет/cell/B5"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.003
+     },
+     {
+      "id": "H11",
+      "question": "Как оформить командировку за границу?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.002
+     },
+     {
+      "id": "H12",
+      "question": "Как подключиться к рабочим системам из дома?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-3"
+       ],
+       [
+        "sheet/Бюджет/cell/A3"
+       ],
+       [
+        "CAN-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.021
+     },
+     {
+      "id": "H13",
+      "question": "Подрядчик выходит на объект — какой инструктаж нужен?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CON-4"
+       ],
+       [
+        "CON-2"
+       ],
+       [
+        "CON-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.017
+     },
+     {
+      "id": "H14",
+      "question": "Можно ли оставить автомобиль во дворе на ночь?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "PARK-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.003
+     },
+     {
+      "id": "H15",
+      "question": "Кто начисляет деньги за дни болезни?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-4"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.003
+     },
+     {
+      "id": "H16",
+      "question": "Что делать, если потерял выданную технику?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ],
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "H17",
+      "question": "Новый сотрудник выходит в понедельник — когда будет учётная запись?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ],
+       [
+        "ACC-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.019
+     },
+     {
+      "id": "H18",
+      "question": "Когда передают входящие письма исполнителю?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-3"
+       ],
+       [
+        "DOC-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "H19",
+      "question": "Какой дресс-код в офисе?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.016
+     },
+     {
+      "id": "H20",
+      "question": "Компенсирует ли организация обед?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.019
+     }
+    ]
+   }
+  },
+  "hybrid": {
+   "status": {
+    "mode": "hybrid",
+    "model": "multilingual-e5-small@470268510",
+    "min_z": 2.5,
+    "gate_z": 1.2
+   },
+   "ranking": {
+    "positive_cases": 15,
+    "expected_paragraphs": 17,
+    "recall@1": 0.529,
+    "recall@3": 0.647,
+    "recall@5": 0.706,
+    "mrr": 0.683,
+    "ndcg@5": 0.713
+   },
+   "negatives_with_candidates": 2,
+   "top5": {
+    "H01": [],
+    "H02": [
+     [
+      "SICK-1"
+     ]
+    ],
+    "H03": [],
+    "H04": [
+     [
+      "ACC-2"
+     ]
+    ],
+    "H05": [
+     [
+      "PARK-1"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "VIS-4"
+     ],
+     [
+      "PARK-3"
+     ]
+    ],
+    "H06": [
+     [
+      "TR-4"
+     ],
+     [
+      "sheet/Бюджет/cell/B2"
+     ]
+    ],
+    "H07": [
+     [
+      "REM-2"
+     ],
+     [
+      "CAN-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "H08": [
+     [
+      "DOC-4"
+     ],
+     [
+      "VIS-4"
+     ]
+    ],
+    "H09": [
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "H10": [
+     [
+      "sheet/Бюджет/cell/A5"
+     ],
+     [
+      "sheet/Бюджет/cell/B5"
+     ],
+     [
+      "PARK-1"
+     ],
+     [
+      "PARK-4"
+     ]
+    ],
+    "H11": [],
+    "H12": [
+     [
+      "REM-3"
+     ],
+     [
+      "sheet/Бюджет/cell/A3"
+     ]
+    ],
+    "H13": [
+     [
+      "CON-4"
+     ]
+    ],
+    "H14": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-4"
+     ],
+     [
+      "PARK-1"
+     ]
+    ],
+    "H15": [
+     [
+      "SICK-4"
+     ]
+    ],
+    "H16": [
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ]
+    ],
+    "H17": [
+     [
+      "ACC-5"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "H18": [
+     [
+      "DOC-3"
+     ],
+     [
+      "DOC-2"
+     ]
+    ],
+    "H19": [],
+    "H20": []
+   },
+   "answers": {
+    "correct_answers": 11,
+    "false_answers": 3,
+    "missed_answers": 3,
+    "correct_refusals": "3/5",
+    "citation_precision": 0.407,
+    "broken_links": 0,
+    "mean_seconds": 0.138,
+    "results": [
+     {
+      "id": "H01",
+      "question": "Ко мне придёт партнёр на встречу, как оформить ему проход?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 2.111
+     },
+     {
+      "id": "H02",
+      "question": "Куда сообщить, что я на больничном?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.011
+     },
+     {
+      "id": "H03",
+      "question": "Нужен лэптоп на неделю, где его получить?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.019
+     },
+     {
+      "id": "H04",
+      "question": "Не могу войти в почту, пароль не подходит",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.031
+     },
+     {
+      "id": "H05",
+      "question": "Какие документы нужны для пропуска на машину?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B3"
+       ],
+       [
+        "VIS-4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.044
+     },
+     {
+      "id": "H06",
+      "question": "Кто согласует внеплановые курсы?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-4"
+       ],
+       [
+        "sheet/Бюджет/cell/B2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.047
+     },
+     {
+      "id": "H07",
+      "question": "Сколько дней в неделю можно работать удалённо?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-2"
+       ],
+       [
+        "CAN-2"
+       ],
+       [
+        "TR-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.034
+     },
+     {
+      "id": "H08",
+      "question": "Кто заверяет копии документов?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-4"
+       ],
+       [
+        "DOC-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.036
+     },
+     {
+      "id": "H09",
+      "question": "Как получить материальную помощь на лечение?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.028
+     },
+     {
+      "id": "H10",
+      "question": "Сколько стоит место на стоянке?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/A5"
+       ],
+       [
+        "sheet/Бюджет/cell/B5"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.047
+     },
+     {
+      "id": "H11",
+      "question": "Как оформить командировку за границу?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.019
+     },
+     {
+      "id": "H12",
+      "question": "Как подключиться к рабочим системам из дома?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-3"
+       ],
+       [
+        "sheet/Бюджет/cell/A3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.059
+     },
+     {
+      "id": "H13",
+      "question": "Подрядчик выходит на объект — какой инструктаж нужен?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CON-4"
+       ],
+       [
+        "CON-3"
+       ],
+       [
+        "CON-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.036
+     },
+     {
+      "id": "H14",
+      "question": "Можно ли оставить автомобиль во дворе на ночь?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.046
+     },
+     {
+      "id": "H15",
+      "question": "Кто начисляет деньги за дни болезни?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-4"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.048
+     },
+     {
+      "id": "H16",
+      "question": "Что делать, если потерял выданную технику?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ],
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.019
+     },
+     {
+      "id": "H17",
+      "question": "Новый сотрудник выходит в понедельник — когда будет учётная запись?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ],
+       [
+        "ACC-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "H18",
+      "question": "Когда передают входящие письма исполнителю?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-3"
+       ],
+       [
+        "DOC-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.044
+     },
+     {
+      "id": "H19",
+      "question": "Какой дресс-код в офисе?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.035
+     },
+     {
+      "id": "H20",
+      "question": "Компенсирует ли организация обед?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.019
+     }
+    ]
+   }
+  }
+ }
+}

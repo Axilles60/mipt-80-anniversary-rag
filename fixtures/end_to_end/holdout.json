@@ -1,0 +1,7 @@
+[
+ {"id":"H01","question":"В какой отдел направляют документы по маршруту Лазурный?","date":"2021-06-01","category":"","expected_status":"answer","required_facts":[{"text":"передают в зелёный отдел","source":"SIMILAR"}],"allowed_sources":["SIMILAR"],"forbidden_conclusions":["десять рабочих дней","пять рабочих дней"]},
+ {"id":"H02","question":"Какие условия действуют для маршрута Лазурь?","date":"2024-01-01","category":"","expected_status":"answer","required_facts":[{"text":"за пять рабочих дней","source":"NEW1"},{"text":"синюю карточку","source":"OLD2"}],"allowed_sources":["NEW1","OLD2"],"forbidden_conclusions":["десять рабочих дней"]},
+ {"id":"H03","question":"Какие документы нужны сотруднику для пропуска Орбита?","date":"2023-07-01","category":"сотрудник","expected_status":"answer","required_facts":[{"text":"синюю карточку","source":"GENERAL"}],"allowed_sources":["GENERAL"],"forbidden_conclusions":["временный талон"]},
+ {"id":"H04","question":"Что нужно гостю для пропуска Орбита и как забронировать космический лифт?","date":"2024-01-01","category":"гость","expected_status":"partial","required_facts":[{"text":"временный талон","source":"EXCEPTION"}],"allowed_sources":["EXCEPTION"],"forbidden_conclusions":["постоянные сотрудники предъявляют"]},
+ {"id":"H05","question":"Как отменить пропуск Орбита?","date":"2024-01-01","category":"сотрудник","expected_status":"insufficient","required_facts":[],"allowed_sources":[],"forbidden_conclusions":["постоянные сотрудники предъявляют","временный талон"]}
+]

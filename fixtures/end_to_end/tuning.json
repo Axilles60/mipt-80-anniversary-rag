@@ -1,0 +1,7 @@
+[
+ {"id":"T01","question":"Куда подать заявление по маршруту Лазурный?","date":"2023-01-01","category":"","expected_status":"answer","required_facts":[{"text":"передают в зелёный отдел","source":"SIMILAR"}],"allowed_sources":["SIMILAR"],"forbidden_conclusions":["десять рабочих дней","пять рабочих дней"]},
+ {"id":"T02","question":"Как оформить маршрут Лазурь?","date":"2021-01-01","category":"","expected_status":"answer","required_facts":[{"text":"за десять рабочих дней","source":"OLD1"},{"text":"синюю карточку","source":"OLD2"}],"allowed_sources":["OLD1","OLD2"],"forbidden_conclusions":["пять рабочих дней"]},
+ {"id":"T03","question":"Что предъявляет гость на пропуск Орбита?","date":"2023-01-01","category":"гость","expected_status":"answer","required_facts":[{"text":"временный талон","source":"EXCEPTION"}],"allowed_sources":["EXCEPTION"],"forbidden_conclusions":["постоянные сотрудники предъявляют"]},
+ {"id":"T04","question":"Как оформить маршрут Лазурь и как получить лунный пропуск?","date":"2023-01-01","category":"","expected_status":"partial","required_facts":[{"text":"за пять рабочих дней","source":"NEW1"},{"text":"синюю карточку","source":"OLD2"}],"allowed_sources":["NEW1","OLD2"],"forbidden_conclusions":["десять рабочих дней"]},
+ {"id":"T05","question":"Кто оплачивает маршрут Лазурный?","date":"2023-01-01","category":"","expected_status":"insufficient","required_facts":[],"allowed_sources":[],"forbidden_conclusions":["передают в зелёный отдел"]}
+]

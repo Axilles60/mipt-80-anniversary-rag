@@ -1,0 +1,9 @@
+[
+ {"id":"T01","question":"Неисправен принтер, как обратиться в поддержку?","expected":["IT21"],"type":"positive"},
+ {"id":"T02","question":"Как открыть ФЛС?","expected":["FLS"],"type":"positive"},
+ {"id":"T03","question":"Куда направить смету расходов?","expected":["EST"],"type":"positive"},
+ {"id":"T04","question":"Как оформить командировку?","expected":["TRIP"],"type":"positive"},
+ {"id":"T05","question":"Какая цена ремонта принтера?","expected":[],"type":"negative"},
+ {"id":"T06","question":"Какая погода на Марсе?","expected":[],"type":"negative"},
+ {"id":"T07","question":"Приказ 47-2017","expected":["IT17"],"type":"exact","forbidden":["IT21"]}
+]

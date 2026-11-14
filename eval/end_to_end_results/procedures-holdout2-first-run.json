@@ -1,0 +1,108 @@
+{
+ "data": "synthetic",
+ "mode": "extractive",
+ "holdout2": {
+  "cases": 7,
+  "correct": 5,
+  "false_answers": 1,
+  "missing_facts": 5,
+  "citation_errors": 0,
+  "correct_refusals": 2,
+  "expected_refusals": 2,
+  "results": [
+   {
+    "id": "Q01",
+    "question": "Что подготовить перед аттестацией и что делать после неё?",
+    "expected": "answer",
+    "actual": "insufficient",
+    "correct": false,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [
+     "по форме АТ-3",
+     "за 7 рабочих дней",
+     "знакомится с протоколом",
+     "в течение 3 рабочих дней"
+    ],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q02",
+    "question": "Какие формы и сроки нужны до и после командировки?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q03",
+    "question": "Не работает VPN, куда писать?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": false,
+    "false_answer": true,
+    "correct_refusal": false,
+    "missing_facts": [
+     "portal.example.invalid/support"
+    ],
+    "forbidden_found": [
+     "подрядчиком"
+    ],
+    "citation_errors": []
+   },
+   {
+    "id": "Q04",
+    "question": "Служебная командировка работника: что сделать до выезда и после возвращения?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q05",
+    "question": "Что нужно сделать до увольнения и после него?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q06",
+    "question": "Не работает компьютер — куда писать, и как получить временный пропуск?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q07",
+    "question": "Что оформить до поездки и после возвращения?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   }
+  ]
+ }
+}

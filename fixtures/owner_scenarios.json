@@ -1,0 +1,166 @@
+[
+  {
+    "id": "AC-DEMO-01",
+    "spec": "sdd/specs/05-acceptance.md"
+  },
+  {
+    "id": "AC-DEMO-02",
+    "spec": "sdd/specs/05-acceptance.md"
+  },
+  {
+    "id": "AC-HALL-01",
+    "spec": "sdd/domains/01-concert-hall.md"
+  },
+  {
+    "id": "AC-HALL-02",
+    "spec": "sdd/domains/01-concert-hall.md"
+  },
+  {
+    "id": "AC-HALL-03",
+    "spec": "sdd/domains/01-concert-hall.md"
+  },
+  {
+    "id": "AC-IT-01",
+    "spec": "sdd/domains/02-it-support.md"
+  },
+  {
+    "id": "AC-IT-02",
+    "spec": "sdd/domains/02-it-support.md"
+  },
+  {
+    "id": "AC-IT-03",
+    "spec": "sdd/domains/02-it-support.md"
+  },
+  {
+    "id": "AC-HOME-01",
+    "spec": "sdd/domains/03-housing.md"
+  },
+  {
+    "id": "AC-HOME-02",
+    "spec": "sdd/domains/03-housing.md"
+  },
+  {
+    "id": "AC-HOME-03",
+    "spec": "sdd/domains/03-housing.md"
+  },
+  {
+    "id": "AC-HR-01",
+    "spec": "sdd/domains/04-recruitment.md"
+  },
+  {
+    "id": "AC-HR-02",
+    "spec": "sdd/domains/04-recruitment.md"
+  },
+  {
+    "id": "AC-HR-03",
+    "spec": "sdd/domains/04-recruitment.md"
+  },
+  {
+    "id": "AC-TRIP-01",
+    "spec": "sdd/domains/05-travel.md"
+  },
+  {
+    "id": "AC-TRIP-02",
+    "spec": "sdd/domains/05-travel.md"
+  },
+  {
+    "id": "AC-TRIP-03",
+    "spec": "sdd/domains/05-travel.md"
+  },
+  {
+    "id": "AC-TRIP-04",
+    "spec": "sdd/domains/05-travel.md"
+  },
+  {
+    "id": "AC-TRIP-05",
+    "spec": "sdd/domains/05-travel.md"
+  },
+  {
+    "id": "AC-DC-01",
+    "spec": "sdd/domains/06-data-center.md"
+  },
+  {
+    "id": "AC-DC-02",
+    "spec": "sdd/domains/06-data-center.md"
+  },
+  {
+    "id": "AC-DC-03",
+    "spec": "sdd/domains/06-data-center.md"
+  },
+  {
+    "id": "AC-FLS-01",
+    "spec": "sdd/domains/07-financial-accounts.md"
+  },
+  {
+    "id": "AC-FLS-02",
+    "spec": "sdd/domains/07-financial-accounts.md"
+  },
+  {
+    "id": "AC-FLS-03",
+    "spec": "sdd/domains/07-financial-accounts.md"
+  },
+  {
+    "id": "AC-FLS-04",
+    "spec": "sdd/domains/07-financial-accounts.md"
+  },
+  {
+    "id": "AC-EST-01",
+    "spec": "sdd/domains/08-estimates.md"
+  },
+  {
+    "id": "AC-EST-02",
+    "spec": "sdd/domains/08-estimates.md"
+  },
+  {
+    "id": "AC-EST-03",
+    "spec": "sdd/domains/08-estimates.md"
+  },
+  {
+    "id": "AC-EST-04",
+    "spec": "sdd/domains/08-estimates.md"
+  },
+  {
+    "id": "AC-BUD-01",
+    "spec": "sdd/domains/09-budgeting.md"
+  },
+  {
+    "id": "AC-BUD-02",
+    "spec": "sdd/domains/09-budgeting.md"
+  },
+  {
+    "id": "AC-BUD-03",
+    "spec": "sdd/domains/09-budgeting.md"
+  },
+  {
+    "id": "AC-BUD-04",
+    "spec": "sdd/domains/09-budgeting.md"
+  },
+  {
+    "id": "AC-LOAN-01",
+    "spec": "sdd/domains/10-internal-loans.md"
+  },
+  {
+    "id": "AC-LOAN-02",
+    "spec": "sdd/domains/10-internal-loans.md"
+  },
+  {
+    "id": "AC-LOAN-03",
+    "spec": "sdd/domains/10-internal-loans.md"
+  },
+  {
+    "id": "AC-LOAN-04",
+    "spec": "sdd/domains/10-internal-loans.md"
+  },
+  {
+    "id": "AC-EB-01",
+    "spec": "sdd/domains/11-electronic-budget.md"
+  },
+  {
+    "id": "AC-EB-02",
+    "spec": "sdd/domains/11-electronic-budget.md"
+  },
+  {
+    "id": "AC-EB-03",
+    "spec": "sdd/domains/11-electronic-budget.md"
+  }
+]

@@ -1,0 +1,1411 @@
+{
+ "split": "tuning",
+ "k": 5,
+ "data": "synthetic",
+ "cases": 16,
+ "modes": {
+  "bm25": {
+   "status": {
+    "mode": "bm25"
+   },
+   "ranking": {
+    "positive_cases": 13,
+    "expected_paragraphs": 15,
+    "recall@1": 0.4,
+    "recall@3": 0.667,
+    "recall@5": 0.667,
+    "mrr": 0.59,
+    "ndcg@5": 0.621
+   },
+   "negatives_with_candidates": 2,
+   "top5": {
+    "T01": [
+     [
+      "VIS-1"
+     ]
+    ],
+    "T02": [],
+    "T03": [
+     [
+      "DOC-3"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "T04": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "REM-3"
+     ]
+    ],
+    "T05": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-4"
+     ]
+    ],
+    "T06": [
+     [
+      "TR-3"
+     ],
+     [
+      "DOC-3"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "T07": [
+     [
+      "CAN-2"
+     ],
+     [
+      "REM-2"
+     ]
+    ],
+    "T08": [
+     [
+      "DOC-2"
+     ]
+    ],
+    "T09": [
+     [
+      "CON-1"
+     ],
+     [
+      "TR-2"
+     ],
+     [
+      "ACC-2"
+     ],
+     [
+      "REM-3"
+     ],
+     [
+      "VIS-3"
+     ]
+    ],
+    "T10": [
+     [
+      "CAN-1"
+     ],
+     [
+      "CAN-2"
+     ]
+    ],
+    "T11": [
+     [
+      "CON-2"
+     ],
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "CAN-3"
+     ]
+    ],
+    "T12": [
+     [
+      "VIS-5"
+     ],
+     [
+      "VIS-4"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-2"
+     ]
+    ],
+    "T13": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "REM-3"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ]
+    ],
+    "T14": [],
+    "T15": [
+     [
+      "ACC-5"
+     ]
+    ],
+    "T16": [
+     [
+      "ACC-2"
+     ],
+     [
+      "ACC-3"
+     ]
+    ]
+   },
+   "answers": {
+    "correct_answers": 9,
+    "false_answers": 4,
+    "missed_answers": 2,
+    "correct_refusals": "1/3",
+    "citation_precision": 0.321,
+    "broken_links": 0,
+    "mean_seconds": 0.017,
+    "results": [
+     {
+      "id": "T01",
+      "question": "Как провести гостя в здание?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "VIS-1"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.041
+     },
+     {
+      "id": "T02",
+      "question": "Забыл пароль от почты, что делать?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.021
+     },
+     {
+      "id": "T03",
+      "question": "Заболел — кому и когда передать больничный?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-3"
+       ],
+       [
+        "TR-3"
+       ],
+       [
+        "SICK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.02
+     },
+     {
+      "id": "T04",
+      "question": "Можно ли взять ноутбук на пару недель?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "REM-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "T05",
+      "question": "Как оформить въезд машины на территорию?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-4"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.01
+     },
+     {
+      "id": "T06",
+      "question": "Что сдать после окончания курсов?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-3"
+       ],
+       [
+        "DOC-3"
+       ],
+       [
+        "SICK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.016
+     },
+     {
+      "id": "T07",
+      "question": "Можно ли работать из дома?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "CAN-2"
+       ],
+       [
+        "REM-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.025
+     },
+     {
+      "id": "T08",
+      "question": "Как зарегистрировать исходящее письмо?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-2"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "T09",
+      "question": "Как оформить ипотеку через организацию?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CON-1"
+       ],
+       [
+        "TR-2"
+       ],
+       [
+        "ACC-2"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.018
+     },
+     {
+      "id": "T10",
+      "question": "Сколько стоит обед в столовой?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CAN-1"
+       ],
+       [
+        "CAN-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.011
+     },
+     {
+      "id": "T11",
+      "question": "Пропуск для сотрудников подрядчика — на какой срок?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.004
+     },
+     {
+      "id": "T12",
+      "question": "Кто сопровождает посетителя?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-5"
+       ],
+       [
+        "VIS-4"
+       ],
+       [
+        "VIS-1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.017
+     },
+     {
+      "id": "T13",
+      "question": "Разбил выданный ноутбук — что писать?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "REM-3"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.012
+     },
+     {
+      "id": "T14",
+      "question": "Как получить служебную квартиру?",
+      "verdict": "correct_refusal",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.012
+     },
+     {
+      "id": "T15",
+      "question": "Когда блокируют учётку уволенного?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ]
+      ],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.024
+     },
+     {
+      "id": "T16",
+      "question": "Что делать, если не открывается страница восстановления пароля?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.003
+     }
+    ]
+   }
+  },
+  "dense": {
+   "status": {
+    "mode": "dense",
+    "model": "multilingual-e5-small@470268510",
+    "min_score": 0.82
+   },
+   "ranking": {
+    "positive_cases": 13,
+    "expected_paragraphs": 15,
+    "recall@1": 0.6,
+    "recall@3": 0.867,
+    "recall@5": 0.867,
+    "mrr": 0.795,
+    "ndcg@5": 0.813
+   },
+   "negatives_with_candidates": 0,
+   "top5": {
+    "T01": [
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-5"
+     ],
+     [
+      "VIS-2"
+     ]
+    ],
+    "T02": [
+     [
+      "ACC-2"
+     ]
+    ],
+    "T03": [
+     [
+      "SICK-2"
+     ],
+     [
+      "SICK-3"
+     ],
+     [
+      "SICK-1"
+     ]
+    ],
+    "T04": [
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "sheet/Бюджет/cell/B4"
+     ]
+    ],
+    "T05": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-1"
+     ],
+     [
+      "PARK-3"
+     ],
+     [
+      "sheet/Бюджет/cell/B5"
+     ]
+    ],
+    "T06": [
+     [
+      "TR-3"
+     ]
+    ],
+    "T07": [
+     [
+      "REM-1"
+     ]
+    ],
+    "T08": [
+     [
+      "DOC-2"
+     ]
+    ],
+    "T09": [],
+    "T10": [],
+    "T11": [
+     [
+      "CON-2"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "CON-4"
+     ]
+    ],
+    "T12": [
+     [
+      "VIS-5"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "VIS-4"
+     ]
+    ],
+    "T13": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ]
+    ],
+    "T14": [],
+    "T15": [
+     [
+      "ACC-5"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "T16": [
+     [
+      "ACC-2"
+     ],
+     [
+      "ACC-3"
+     ]
+    ]
+   },
+   "answers": {
+    "correct_answers": 11,
+    "false_answers": 4,
+    "missed_answers": 1,
+    "correct_refusals": "0/3",
+    "citation_precision": 0.293,
+    "broken_links": 0,
+    "mean_seconds": 0.172,
+    "results": [
+     {
+      "id": "T01",
+      "question": "Как провести гостя в здание?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-1"
+       ],
+       [
+        "VIS-5"
+       ],
+       [
+        "VIS-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 2.174
+     },
+     {
+      "id": "T02",
+      "question": "Забыл пароль от почты, что делать?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-5"
+       ],
+       [
+        "sheet/Бюджет/cell/B4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.051
+     },
+     {
+      "id": "T03",
+      "question": "Заболел — кому и когда передать больничный?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-1"
+       ],
+       [
+        "SICK-3"
+       ],
+       [
+        "SICK-2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.049
+     },
+     {
+      "id": "T04",
+      "question": "Можно ли взять ноутбук на пару недель?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ],
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "REM-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.034
+     },
+     {
+      "id": "T05",
+      "question": "Как оформить въезд машины на территорию?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-1"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.021
+     },
+     {
+      "id": "T06",
+      "question": "Что сдать после окончания курсов?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-3"
+       ],
+       [
+        "sheet/Бюджет/cell/B2"
+       ],
+       [
+        "TR-1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.032
+     },
+     {
+      "id": "T07",
+      "question": "Можно ли работать из дома?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "REM-1"
+       ],
+       [
+        "CON-1"
+       ],
+       [
+        "CAN-1"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.048
+     },
+     {
+      "id": "T08",
+      "question": "Как зарегистрировать исходящее письмо?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-2"
+       ],
+       [
+        "ACC-1"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.034
+     },
+     {
+      "id": "T09",
+      "question": "Как оформить ипотеку через организацию?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "ACC-1"
+       ],
+       [
+        "VIS-1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.041
+     },
+     {
+      "id": "T10",
+      "question": "Сколько стоит обед в столовой?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CAN-1"
+       ],
+       [
+        "sheet/Бюджет/cell/A5"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.035
+     },
+     {
+      "id": "T11",
+      "question": "Пропуск для сотрудников подрядчика — на какой срок?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.025
+     },
+     {
+      "id": "T12",
+      "question": "Кто сопровождает посетителя?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-5"
+       ],
+       [
+        "VIS-2"
+       ],
+       [
+        "VIS-4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.021
+     },
+     {
+      "id": "T13",
+      "question": "Разбил выданный ноутбук — что писать?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.047
+     },
+     {
+      "id": "T14",
+      "question": "Как получить служебную квартиру?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CAN-1"
+       ],
+       [
+        "PARK-2"
+       ],
+       [
+        "VIS-1"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.052
+     },
+     {
+      "id": "T15",
+      "question": "Когда блокируют учётку уволенного?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ],
+       [
+        "ACC-4"
+       ],
+       [
+        "SICK-1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.049
+     },
+     {
+      "id": "T16",
+      "question": "Что делать, если не открывается страница восстановления пароля?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.041
+     }
+    ]
+   }
+  },
+  "hybrid": {
+   "status": {
+    "mode": "hybrid",
+    "model": "multilingual-e5-small@470268510",
+    "min_score": 0.82
+   },
+   "ranking": {
+    "positive_cases": 13,
+    "expected_paragraphs": 15,
+    "recall@1": 0.533,
+    "recall@3": 0.933,
+    "recall@5": 0.933,
+    "mrr": 0.782,
+    "ndcg@5": 0.817
+   },
+   "negatives_with_candidates": 2,
+   "top5": {
+    "T01": [
+     [
+      "VIS-1"
+     ],
+     [
+      "VIS-5"
+     ],
+     [
+      "VIS-2"
+     ]
+    ],
+    "T02": [
+     [
+      "ACC-2"
+     ]
+    ],
+    "T03": [
+     [
+      "SICK-3"
+     ],
+     [
+      "DOC-3"
+     ],
+     [
+      "SICK-2"
+     ],
+     [
+      "TR-3"
+     ],
+     [
+      "SICK-1"
+     ]
+    ],
+    "T04": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "EQ-1",
+      "EQ-2",
+      "EQ-3",
+      "EQ-F1"
+     ],
+     [
+      "REM-3"
+     ]
+    ],
+    "T05": [
+     [
+      "PARK-2"
+     ],
+     [
+      "PARK-4"
+     ],
+     [
+      "PARK-1"
+     ],
+     [
+      "PARK-3"
+     ],
+     [
+      "sheet/Бюджет/cell/B5"
+     ]
+    ],
+    "T06": [
+     [
+      "TR-3"
+     ],
+     [
+      "DOC-3"
+     ],
+     [
+      "SICK-3"
+     ]
+    ],
+    "T07": [
+     [
+      "CAN-2"
+     ],
+     [
+      "REM-1"
+     ],
+     [
+      "REM-2"
+     ]
+    ],
+    "T08": [
+     [
+      "DOC-2"
+     ]
+    ],
+    "T09": [
+     [
+      "CON-1"
+     ],
+     [
+      "TR-2"
+     ],
+     [
+      "ACC-2"
+     ],
+     [
+      "REM-3"
+     ],
+     [
+      "VIS-3"
+     ]
+    ],
+    "T10": [
+     [
+      "CAN-1"
+     ],
+     [
+      "CAN-2"
+     ]
+    ],
+    "T11": [
+     [
+      "CON-2"
+     ],
+     [
+      "CON-1"
+     ],
+     [
+      "CON-4"
+     ],
+     [
+      "sheet/Бюджет/cell/A3"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ]
+    ],
+    "T12": [
+     [
+      "VIS-5"
+     ],
+     [
+      "VIS-4"
+     ],
+     [
+      "VIS-2"
+     ],
+     [
+      "sheet/Бюджет/cell/B3"
+     ],
+     [
+      "VIS-1"
+     ]
+    ],
+    "T13": [
+     [
+      "sheet/Бюджет/cell/B4"
+     ],
+     [
+      "EQ-4",
+      "EQ-5",
+      "EQ-F2"
+     ],
+     [
+      "REM-3"
+     ]
+    ],
+    "T14": [],
+    "T15": [
+     [
+      "ACC-5"
+     ],
+     [
+      "ACC-4"
+     ]
+    ],
+    "T16": [
+     [
+      "ACC-2"
+     ],
+     [
+      "ACC-3"
+     ]
+    ]
+   },
+   "answers": {
+    "correct_answers": 12,
+    "false_answers": 3,
+    "missed_answers": 1,
+    "correct_refusals": "0/3",
+    "citation_precision": 0.273,
+    "broken_links": 0,
+    "mean_seconds": 0.177,
+    "results": [
+     {
+      "id": "T01",
+      "question": "Как провести гостя в здание?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-1"
+       ],
+       [
+        "VIS-5"
+       ],
+       [
+        "VIS-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 2.284
+     },
+     {
+      "id": "T02",
+      "question": "Забыл пароль от почты, что делать?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-5"
+       ],
+       [
+        "sheet/Бюджет/cell/B4"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.028
+     },
+     {
+      "id": "T03",
+      "question": "Заболел — кому и когда передать больничный?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "SICK-1"
+       ],
+       [
+        "SICK-3"
+       ],
+       [
+        "DOC-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.03
+     },
+     {
+      "id": "T04",
+      "question": "Можно ли взять ноутбук на пару недель?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "EQ-1",
+        "EQ-2",
+        "EQ-3",
+        "EQ-F1"
+       ],
+       [
+        "REM-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.031
+     },
+     {
+      "id": "T05",
+      "question": "Как оформить въезд машины на территорию?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "PARK-2"
+       ],
+       [
+        "PARK-4"
+       ],
+       [
+        "PARK-1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.032
+     },
+     {
+      "id": "T06",
+      "question": "Что сдать после окончания курсов?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "TR-3"
+       ],
+       [
+        "DOC-3"
+       ],
+       [
+        "sheet/Бюджет/cell/B2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.031
+     },
+     {
+      "id": "T07",
+      "question": "Можно ли работать из дома?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "REM-2"
+       ],
+       [
+        "CAN-2"
+       ],
+       [
+        "REM-1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.055
+     },
+     {
+      "id": "T08",
+      "question": "Как зарегистрировать исходящее письмо?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "DOC-2"
+       ],
+       [
+        "ACC-1"
+       ],
+       [
+        "PARK-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.047
+     },
+     {
+      "id": "T09",
+      "question": "Как оформить ипотеку через организацию?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CON-1"
+       ],
+       [
+        "ACC-1"
+       ],
+       [
+        "TR-2"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.042
+     },
+     {
+      "id": "T10",
+      "question": "Сколько стоит обед в столовой?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CAN-1"
+       ],
+       [
+        "CAN-2"
+       ],
+       [
+        "sheet/Бюджет/cell/A5"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.032
+     },
+     {
+      "id": "T11",
+      "question": "Пропуск для сотрудников подрядчика — на какой срок?",
+      "verdict": "missed",
+      "cited": [],
+      "irrelevant_citations": 0,
+      "broken_links": 0,
+      "insufficient_message": true,
+      "seconds": 0.024
+     },
+     {
+      "id": "T12",
+      "question": "Кто сопровождает посетителя?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "VIS-5"
+       ],
+       [
+        "VIS-4"
+       ],
+       [
+        "VIS-2"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.02
+     },
+     {
+      "id": "T13",
+      "question": "Разбил выданный ноутбук — что писать?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "sheet/Бюджет/cell/B4"
+       ],
+       [
+        "EQ-4",
+        "EQ-5",
+        "EQ-F2"
+       ],
+       [
+        "REM-3"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.064
+     },
+     {
+      "id": "T14",
+      "question": "Как получить служебную квартиру?",
+      "verdict": "false_answer",
+      "cited": [
+       [
+        "CAN-1"
+       ],
+       [
+        "PARK-2"
+       ],
+       [
+        "VIS-1"
+       ]
+      ],
+      "irrelevant_citations": 3,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.033
+     },
+     {
+      "id": "T15",
+      "question": "Когда блокируют учётку уволенного?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-5"
+       ],
+       [
+        "ACC-4"
+       ],
+       [
+        "SICK-1"
+       ]
+      ],
+      "irrelevant_citations": 2,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.05
+     },
+     {
+      "id": "T16",
+      "question": "Что делать, если не открывается страница восстановления пароля?",
+      "verdict": "correct",
+      "cited": [
+       [
+        "ACC-2"
+       ],
+       [
+        "ACC-3"
+       ]
+      ],
+      "irrelevant_citations": 1,
+      "broken_links": 0,
+      "insufficient_message": false,
+      "seconds": 0.022
+     }
+    ]
+   }
+  }
+ }
+}

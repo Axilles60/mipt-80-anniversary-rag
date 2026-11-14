@@ -1,0 +1,12 @@
+[
+ {"id":"S01","question":"На кого возложена оплата починки принтера?","expected":[],"type":"negative"},
+ {"id":"S02","question":"Как аннулировать заявку на конференц-зал?","expected":[],"type":"negative"},
+ {"id":"S03","question":"Как продлить бронирование конференц-зала?","expected":[],"type":"negative"},
+ {"id":"S04","question":"Какова стоимость открытия финансового лицевого счета?","expected":[],"type":"negative"},
+ {"id":"S05","question":"Куда подать заявление для открытия лицевого счета?","expected":["FLS"],"type":"positive"},
+ {"id":"S06","question":"Кому подать заявку для бронирования конференц-зала?","expected":["HALL"],"type":"positive"},
+ {"id":"S07","question":"Кто согласует смету расходов?","expected":["EST"],"type":"positive"},
+ {"id":"S08","question":"Как оформить поездку перед командировкой?","expected":["TRIP"],"type":"positive"},
+ {"id":"S09","question":"Положение 24-2023","expected":["EST"],"type":"exact"},
+ {"id":"S10","question":"Как забронировать конференц-зал и как отменить бронирование конференц-зала?","expected":["HALL"],"type":"partial"}
+]

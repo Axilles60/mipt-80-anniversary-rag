@@ -1,0 +1,77 @@
+{
+ "data": "synthetic",
+ "mode": "extractive",
+ "holdout3": {
+  "cases": 5,
+  "correct": 4,
+  "false_answers": 0,
+  "missing_facts": 1,
+  "citation_errors": 0,
+  "correct_refusals": 2,
+  "expected_refusals": 2,
+  "results": [
+   {
+    "id": "R01",
+    "question": "Что сделать до выхода на работу и после оформления?",
+    "expected": "answer",
+    "actual": "partial",
+    "correct": false,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [
+     "вводный инструктаж"
+    ],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "R02",
+    "question": "Что сделать до отпуска и после него?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "R03",
+    "question": "Что нужно сделать перед аттестацией и после неё?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "R04",
+    "question": "Что сделать до начала ремонта кабинета и после его завершения?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "R05",
+    "question": "Командировка: какие документы оформить заранее и что сдать по возвращении?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   }
+  ]
+ }
+}

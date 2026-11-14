@@ -1,0 +1,78 @@
+{
+  "mode": "extractive",
+  "data": "synthetic",
+  "environment": {
+    "platform": "Linux-7.0.12-linuxkit-aarch64-with-glibc2.41",
+    "machine": "aarch64",
+    "python": "3.13.18",
+    "sqlite": "3.46.1",
+    "logical_cpus_visible": 10
+  },
+  "database": "new temporary SQLite",
+  "documents": 1,
+  "versions": 2,
+  "imports": [
+    {
+      "file_size_bytes": 445,
+      "elapsed_ms": 181.86,
+      "statuses": {
+        "review": 1
+      }
+    },
+    {
+      "file_size_bytes": 441,
+      "elapsed_ms": 163.5,
+      "statuses": {
+        "review": 1
+      }
+    }
+  ],
+  "question_samples": 5,
+  "samples": [
+    {
+      "scenario": "exact",
+      "question": "Регламент 571-2021",
+      "date": null,
+      "latency_ms": 3.62,
+      "http_status": 200
+    },
+    {
+      "scenario": "paraphrase",
+      "question": "Куда направить заявку по регламенту 571-2021?",
+      "date": null,
+      "latency_ms": 0.51,
+      "http_status": 200
+    },
+    {
+      "scenario": "unknown",
+      "question": "Как отменить заявку по регламенту 571-2021?",
+      "date": null,
+      "latency_ms": 0.45,
+      "http_status": 200
+    },
+    {
+      "scenario": "historical",
+      "question": "Регламент 571",
+      "date": "2022-01-01",
+      "latency_ms": 1.07,
+      "http_status": 200
+    },
+    {
+      "scenario": "updated",
+      "question": "Регламент 571",
+      "date": "2024-01-01",
+      "latency_ms": 0.48,
+      "http_status": 200
+    }
+  ],
+  "checks": {
+    "exact": true,
+    "paraphrase": true,
+    "no_answer": true,
+    "old_version": true,
+    "new_version": true,
+    "old_link_after_update": true,
+    "citation_version_locator_and_text": true
+  },
+  "latency_scope": "one warm loopback POST per scenario; includes request and response, excludes citation opening; import includes CLI startup"
+}

@@ -1,0 +1,291 @@
+{
+ "data": "synthetic",
+ "mode": "extractive",
+ "dev": {
+  "cases": 5,
+  "correct": 5,
+  "false_answers": 0,
+  "missing_facts": 0,
+  "citation_errors": 0,
+  "correct_refusals": 0,
+  "expected_refusals": 0,
+  "results": [
+   {
+    "id": "D01",
+    "question": "Какие формы и сроки нужны до и после командировки?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "D02",
+    "question": "Что оформить перед поездкой и что сдать после возвращения из командировки?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "D03",
+    "question": "Сломалось МФУ — куда подать заявку и какие данные указать?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "D04",
+    "question": "Через сколько починят принтер?",
+    "expected": "partial",
+    "actual": "partial",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "D05",
+    "question": "Не работает принтер: куда обратиться и как заказать новый картридж?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   }
+  ]
+ },
+ "holdout": {
+  "cases": 9,
+  "correct": 9,
+  "false_answers": 0,
+  "missing_facts": 0,
+  "citation_errors": 0,
+  "correct_refusals": 2,
+  "expected_refusals": 2,
+  "results": [
+   {
+    "id": "P01",
+    "question": "Что нужно сделать до начала обучения и после его окончания?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P02",
+    "question": "Когда подать заявление на выезд и что сдать после возвращения?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P03",
+    "question": "Какие формы и сроки до поездки и после возвращения?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P04",
+    "question": "Что сдать по возвращении из командировки и что оформить заранее?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P05",
+    "question": "Не работает сканер, куда обратиться?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P06",
+    "question": "Не работает принтер, куда обратиться?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P07",
+    "question": "Сломался компьютер: куда подать обращение?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P08",
+    "question": "Сломался ноутбук: куда обратиться и сколько ждать ответа?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "P09",
+    "question": "Куда сообщить о сбое в работе почты и как получить новый пропуск?",
+    "expected": "partial",
+    "actual": "partial",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   }
+  ]
+ },
+ "holdout2": {
+  "cases": 7,
+  "correct": 6,
+  "false_answers": 0,
+  "missing_facts": 1,
+  "citation_errors": 0,
+  "correct_refusals": 2,
+  "expected_refusals": 2,
+  "results": [
+   {
+    "id": "Q01",
+    "question": "Что подготовить перед аттестацией и что делать после неё?",
+    "expected": "answer",
+    "actual": "partial",
+    "correct": false,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [
+     "знакомится с протоколом"
+    ],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q02",
+    "question": "Какие формы и сроки нужны до и после командировки?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q03",
+    "question": "Не работает VPN, куда писать?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q04",
+    "question": "Служебная командировка работника: что сделать до выезда и после возвращения?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q05",
+    "question": "Что нужно сделать до увольнения и после него?",
+    "expected": "insufficient",
+    "actual": "insufficient",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": true,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q06",
+    "question": "Не работает компьютер — куда писать, и как получить временный пропуск?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   },
+   {
+    "id": "Q07",
+    "question": "Что оформить до поездки и после возвращения?",
+    "expected": "answer",
+    "actual": "answer",
+    "correct": true,
+    "false_answer": false,
+    "correct_refusal": false,
+    "missing_facts": [],
+    "forbidden_found": [],
+    "citation_errors": []
+   }
+  ]
+ }
+}

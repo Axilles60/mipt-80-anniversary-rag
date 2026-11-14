@@ -1,0 +1,7 @@
+[
+ {"id":"SYN-HISTORY-OLD","question":"Порядок заявки","date":"2021-06-01","conditions":{"категория":"А"},"expected_fragments":["A1","A2"],"forbidden_fragments":["B1","F1"]},
+ {"id":"SYN-HISTORY-NEW","question":"Порядок заявки","date":"2023-01-01","conditions":{"категория":"А"},"expected_fragments":["A1","B1"],"forbidden_fragments":["A2","F1"],"expected_limit_fragments":["B1"]},
+ {"id":"SYN-CONFLICT","question":"Порядок заявки","date":"2023-01-01","conditions":{"категория":"Б"},"expected_fragments":["A1","C1","C2"],"expect_conflict":true},
+ {"id":"SYN-TRAVEL","question":"Командировка","date":"2023-01-01","conditions":{},"expected_fragments":["T1","T2"],"expected_limit_fragments":["M1","T1"]},
+ {"id":"SYN-MISSING-CATEGORY","question":"Порядок заявки","date":"2023-01-01","conditions":{},"expect_question":true}
+]
