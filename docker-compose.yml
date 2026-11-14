@@ -55,7 +55,9 @@ services:
       args:
         LLM: qwen3
     image: employee-navigator-llm:gpu
-    command: ["-m", "/models/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf", "-ngl", "99", "-c", "16384", "-np", "4",
+    # 2 slots of 16384 tokens each: real regulations give prompts of 5-6 thousand tokens, which did not
+    # fit into 4 slots of 4096 (the request was refused and the extractive answer shown instead).
+    command: ["-m", "/models/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf", "-ngl", "99", "-c", "32768", "-np", "2",
               "--host", "0.0.0.0", "--port", "8080"]
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8080/health"]

@@ -259,7 +259,7 @@ NAVIGATOR_ORIGINALS_DIR=./data/demo/originals NAVIGATOR_INDEX_DIR=./data/demo/in
 Прогон на GPU-сервере вне контейнера:
 
 ```sh
-llama-server -m data/models/qwen3-4b-instruct-2507/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf -ngl 99 -c 16384 -np 4 --host 127.0.0.1 --port 8081
+llama-server -m data/models/qwen3-4b-instruct-2507/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf -ngl 99 -c 32768 -np 2 --host 127.0.0.1 --port 8081
 python eval/measure_rag.py --split tuning --config "rag=NAVIGATOR_PIPELINE=rag;NAVIGATOR_RETRIEVAL=hybrid;NAVIGATOR_LLM_URL=http://127.0.0.1:8081" --report eval/rag_results/<новый файл>.json
 python eval/compare_runs.py eval/rag_results/tuning-eval3-baseline.json eval/rag_results/<новый файл>.json
 python eval/measure_rag.py --split tuning --rescore eval/rag_results/<отчёт>.json --report eval/rag_results/<новый файл>.json
