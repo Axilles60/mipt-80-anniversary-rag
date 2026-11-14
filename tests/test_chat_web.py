@@ -47,8 +47,23 @@ class CondenseTest(unittest.TestCase):
 
     def test_number_from_an_answer_is_not_carried_over(self):
         # «7» comes from the previous answer, not from any question: an unchecked value.
+        # The unfaithful rewrite is replaced by the person's own words: previous question + this one.
         self.assertEqual(rag.condense(FakeModel('Отдел закупок рассматривает заявку 7 дней — почему?'), TURNS, 'А почему так долго?'),
-                         'А почему так долго?')
+                         'Кто рассматривает заявки на закупку? А почему так долго?')
+
+    def test_unfaithful_rewrites_fall_back_to_own_words(self):
+        """External audit of d0bba9b: the rewriting may not change what is asked."""
+        turns = [{'question': 'Можно ли передавать пароль?', 'standalone': 'Можно ли передавать пароль?',
+                  'answer_text': 'Передавать пароль другим лицам запрещено.'}]
+        joined = 'Можно ли передавать пароль? А коллегам?'
+        for rewrite in ('Пароли можно передавать коллегам',            # a statement, not a question
+                        'Можно ли передавать пароль коллегам три раза?',  # a number in words
+                        'Можно ли не передавать пароль коллегам?',       # a negation nobody asked
+                        'Можно ли передавать пароль начальнику?'):       # the question's own word lost
+            with self.subTest(rewrite=rewrite):
+                self.assertEqual(rag.condense(FakeModel(rewrite), turns, 'А коллегам?'), joined)
+        self.assertEqual(rag.condense(FakeModel('Можно ли передавать пароль коллегам?'), turns, 'А коллегам?'),
+                         'Можно ли передавать пароль коллегам?')
 
     def test_failure_keeps_the_question(self):
         self.assertEqual(rag.condense(FakeModel(OSError('down')), TURNS, 'А где их кабинет?'), 'А где их кабинет?')
@@ -154,6 +169,7 @@ class ChatWebTest(unittest.TestCase):
                         pass
                     time.sleep(.1)
                 cookie = headers['Set-Cookie'].split(';')[0]
+                self.assertEqual(headers['Cache-Control'], 'no-store')   # the page shows the person's history
                 self.assertTrue(cookie.startswith(history.COOKIE + '='))
                 # A script without the cookie: the single answer page, nothing kept.
                 status, _, page = self.request('POST', '/ask', {'question': 'Не работает принтер, куда обратиться?'})

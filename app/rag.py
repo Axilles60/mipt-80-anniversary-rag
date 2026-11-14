@@ -18,15 +18,26 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
 import threading
+from urllib.request import HTTPRedirectHandler
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LLM = ROOT / 'data' / 'models' / 'qwen3-4b-instruct-2507' / 'Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf'
 CONTEXT_TOKENS = 2200   # chunk text given to the model (CPU prefill dominates latency)
-MAX_ANSWER_TOKENS = 600
+# A list answer (all rows of a table about one person) runs to 1000+ tokens; 600 cut it
+# mid-JSON and the page said «неверный формат». Beyond this limit see Truncated / salvage.
+MAX_ANSWER_TOKENS = 1200
 RETRIEVE_K = 8
 _lock = threading.Lock()
+
+
+class Truncated(ValueError):
+    """The model reached max_tokens: its JSON is cut off (`content` is what came)."""
+    def __init__(self, content):
+        super().__init__('output cut off at max_tokens')
+        self.content = content
 
 SYSTEM = (
     'Ты — навигатор сотрудника по внутренним регламентам организации. Отвечай по-русски и только по '
@@ -93,7 +104,7 @@ class LocalModel:
             # schema=False: plain text (a JSON grammar lets a model loop on whitespace).
             fmt = {} if schema is False else {'response_format': {'type': 'json_object', 'schema': schema or SCHEMA}}
             out = self.model.create_chat_completion(messages=messages, temperature=0, max_tokens=max_tokens, **fmt)
-        return out['choices'][0]['message']['content']
+        return _content(out, schema)
 
 
 class ServerModel:
@@ -126,9 +137,65 @@ class ServerModel:
         request = Request(self.url, data=body, headers={'Content-Type': 'application/json'})
         # No proxy from the environment (HTTP_PROXY): the request carries document text and
         # must go straight to the local server (external audit of d23f0fc).
-        with build_opener(ProxyHandler({})).open(request, timeout=300) as response:
+        with build_opener(ProxyHandler({}), NoRedirect()).open(request, timeout=300) as response:
             out = json.loads(response.read().decode('utf-8'))
-        return out['choices'][0]['message']['content']
+        return _content(out, schema)
+
+
+class NoRedirect(HTTPRedirectHandler):
+    """A redirect is an error: the request carries document text and goes only to the local
+    server it was given (external audit of d0bba9b), never on to where a reply points."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        from urllib.error import HTTPError
+        raise HTTPError(req.full_url, code, 'redirect refused: ' + msg, headers, fp)
+
+
+def _content(out, schema):
+    """The reply text; a JSON reply cut off at max_tokens raises Truncated (plain text is kept)."""
+    choice = out['choices'][0]
+    content = choice['message']['content'] or ''
+    if schema is not False and choice.get('finish_reason') == 'length':
+        raise Truncated(content)
+    return content
+
+
+def salvage(text):
+    """The complete statements of a reply cut off at max_tokens, or None.
+
+    The schema fixes the order of the fields (status, short_answer, items, missing), so every
+    item before the cut is a whole JSON object; the half-written one is dropped. The kept
+    statements then go through the same checks as any other."""
+    decoder = json.JSONDecoder()
+
+    def value(key, start):
+        match = re.compile(r'"' + key + r'"\s*:\s*').search(text, start)
+        if not match:
+            raise ValueError(key)
+        return decoder.raw_decode(text, match.end())
+
+    try:
+        status, pos = value('status', 0)
+        short, pos = value('short_answer', pos)
+        match = re.compile(r'"items"\s*:\s*\[').search(text, pos)
+        if not match:
+            return None
+        pos, items = match.end(), []
+        while True:
+            while pos < len(text) and text[pos] in ' \t\r\n,':
+                pos += 1
+            if pos >= len(text) or text[pos] != '{':
+                break
+            try:
+                item, pos = decoder.raw_decode(text, pos)
+            except ValueError:
+                break
+            if isinstance(item, dict) and isinstance(item.get('text'), str) and isinstance(item.get('sources'), list):
+                items.append(item)
+    except ValueError:
+        return None
+    if not items or status not in ('answer', 'partial'):
+        return None
+    return {'status': status, 'short_answer': short if isinstance(short, str) else '', 'items': items, 'missing': []}
 
 
 @lru_cache(maxsize=1)
@@ -363,7 +430,7 @@ def _morph():
         return None
 
 
-def question_terms(question):
+def question_terms(question, nouns_only=False):
     """Nouns and adjectives of the question that name what is asked about
     («актовый зал», «касса», «жалоба клиентов»), as stems; generic words excluded."""
     morph = _morph()
@@ -373,7 +440,9 @@ def question_terms(question):
     out = set()
     for word in re.findall(r'[А-Яа-яЁё-]{3,}', question):
         parse = morph.parse(word.lower())[0]
-        if parse.tag.POS in ('NOUN', 'ADJF', 'ADJS') and parse.normal_form not in GENERIC_TERMS:
+        kinds = ('NOUN',) if nouns_only else ('NOUN', 'ADJF', 'ADJS')
+        # «тот», «этот», «такой» (pronoun adjectives) point back, they name nothing.
+        if parse.tag.POS in kinds and 'Apro' not in parse.tag and parse.normal_form not in GENERIC_TERMS:
             out.add(stem(parse.normal_form))
     return out
 
@@ -406,7 +475,10 @@ def amounts(text):
 # Bounds that make an amount the norm itself (a term, a limit), not a condition of a rule
 # («до 100 тысяч», «свыше 50 тысяч» say when a rule applies: a question amount outside them
 # is another case, not a false premise).
-NORM_BOUNDS = ('в течение', 'не позднее', 'не более')
+# Upper bounds of a norm: a question value above it contradicts it, one below does not («за 1 день»
+# against «в течение 3 рабочих дней» is compatible). «Не позднее N дней до …» is left out: whether N
+# is a minimum or a maximum depends on the words after it.
+NORM_BOUNDS = ('в течение', 'не более', 'до', 'максимум')
 
 
 def stated_amounts(text):
@@ -429,26 +501,35 @@ def premise_corrections(question, chunks, shown_text=''):
     «не позднее»; «не более» only when the question exceeds it), the sentence shares the
     question's subject words, and the shown answer does not already give that value.
     """
-    from .stemming import query_stems
+    from .stemming import stem_text
     asked = [(v, b) for v, b, _, _, _ in stated_amounts(question)]
     if not asked:
         return []
-    subject = {s for s in query_stems(re.sub(AMOUNT, ' ', question)) if not s.startswith(TIME_WORDS)}
+    # The subject: the question's own nouns and adjectives (not measure or time words). A sentence
+    # is about it when it (or its document title) names two of them, or the only one there is:
+    # «личные дела» are not «приказы по личному составу» because both say «личный».
+    terms = [s for s in question_terms(re.sub(AMOUNT, ' ', question)) if not s.startswith(TIME_WORDS)]
+    need = min(2, len(terms))
+    if not need:
+        return []
     def overlap(text):
-        stems = set(query_stems(text))
-        return sum(1 for s in subject if any(h.startswith(s[:5]) for h in stems))
+        stems = set(stem_text(text).split())
+        return sum(1 for s in terms if any(h.startswith(s[:5]) or s.startswith(h[:5]) and len(h) >= 4 for h in stems))
     def heading(chunk):
         text = support_text(chunk)
         return text.split(HEAD_END)[0] if HEAD_END in text else ''
-    # (own overlap, overlap with the document title) of every sentence of the context. The
-    # subject may be named only in the title («КЗ вмещает…» in the «ПОРЯДОК бронирования
-    # конференц-зала»); a title match counts only when no sentence names the subject itself.
-    sentences = [(c, s, overlap(s), overlap(heading(c))) for c in chunks for s in re.split(r'(?<=[.;])\s+', c['text'])]
-    about = [(c, s, (o, h)) for c, s, o, h in sentences if o or h]
+    # Every noun of the question must be there too: «личные дела» are not «приказы» (P03).
+    nouns = [s for s in question_terms(re.sub(AMOUNT, ' ', question), nouns_only=True) if not s.startswith(TIME_WORDS)]
+    def names_all(text):
+        stems = set(stem_text(text).split())
+        found = sum(1 for s in nouns if any(h.startswith(s[:5]) or s.startswith(h[:5]) and len(h) >= 4 for h in stems))
+        # With three nouns or more one may be missing (an injection's «инструкции», a side word).
+        return found >= (len(nouns) - 1 if len(nouns) >= 3 else len(nouns))
+    sentences = [(c, s, overlap(s), overlap(heading(c) + ' ' + s)) for c in chunks for s in re.split(r'(?<=[.;])\s+', c['text'])]
+    about = [(c, s, (o, h)) for c, s, o, h in sentences if h >= need and names_all(heading(c) + ' ' + s)]
     # The question's amount stated anywhere about its subject: no false premise
     # («10 рабочих дней» for the certificate does not support it for the expense report).
-    own = [x for x in about if x[2][0]] or about
-    present = {(v, b) for _, s, _ in own for v, b, _, _, _ in stated_amounts(s)}
+    present = {(v, b) for _, s, _ in about for v, b, _, _, _ in stated_amounts(s)}
     out = []
     for value, base in asked:
         if (value, base) in present:
@@ -460,8 +541,8 @@ def premise_corrections(question, chunks, shown_text=''):
                     continue
                 if bound and bound not in NORM_BOUNDS:
                     continue
-                if bound == 'не более' and float(value) <= float(v):
-                    continue
+                if bound and float(value) <= float(v):
+                    continue                    # within the upper bound: compatible, not a false premise
                 if re.search(r'(?<![\d.,])' + re.escape(v) + r'(?![\d])', shown_text):
                     continue
                 candidates.append((score, c, sentence))
@@ -784,17 +865,50 @@ def condense(model, history, question):
     rewritten = re.sub(r'\s+', ' ', str(raw or '').strip().split('\n')[0]).strip(' «»"\'')
     if not rewritten or len(rewritten) > 2 * len(question) + 300:
         return question
-    asked = {_tok(t) for t in CLAIM_TOKENS.findall(question + ' ' + ' '.join(
-        h['question'] + ' ' + (h.get('standalone') or '') for h in history))}
-    if any(_tok(t) not in asked for t in CLAIM_TOKENS.findall(rewritten)):
-        return question
+    previous = (history[-1].get('standalone') or history[-1]['question']).strip()
+    joined = previous + ' ' + question.strip()
     # The model kept the question as it was, or left it without a subject («А в пятницу?»,
-    # «А за три дня?»): the previous question, as understood, goes in front of it, so that
-    # retrieval and the answer see what it refers to.
+    # «А за три дня?»), or changed what was asked: the previous question, as understood, goes
+    # in front of it instead — the person's own words, which cannot change the meaning.
     if _bare(rewritten) == _bare(question) or not question_terms(rewritten):
-        previous = (history[-1].get('standalone') or history[-1]['question']).strip()
-        return previous + ' ' + question.strip()
+        return joined
+    if not _faithful(rewritten, question, history):
+        return joined
     return rewritten
+
+
+NUMBER_WORDS = re.compile(r'(?<![а-яё])(?:ноль|один|одна|одно|одного|одной|два|две|двух|три|тр[её]х|четыре|четыр[её]х|пять|пяти|'
+                          r'шесть|шести|семь|семи|восемь|восьми|девять|девяти|десять|десяти|двадцат\w*|тридцат\w*|сорок\w*|'
+                          r'пятьдесят\w*|сто|ста|сот\w*|двести|тысяч\w*|миллион\w*|полтор\w*)(?![а-яё])', re.I)
+NEGATION = re.compile(r'(?<![а-яё])(?:не|нельзя|нет|запрещ\w*|без)(?![а-яё])', re.I)
+
+
+def _faithful(rewritten, question, history):
+    """The rewriting only fills in what the question refers to (external audit of d0bba9b: a
+    rewritten question is checked by nothing after it, «Пароли можно передавать коллегам»
+    would have been accepted):
+    - every noun and adjective of the question stays («личный ноутбук», «корпус Г»);
+    - every noun and adjective it adds comes from the dialogue (its questions or answers);
+    - no negation and no number (in digits or in words) that the questions do not have."""
+    from .stemming import stem_text
+    if question.rstrip().endswith('?') and not rewritten.rstrip().endswith('?'):
+        return False            # a question rewritten into a statement («Пароли можно передавать коллегам»)
+    questions = question + ' ' + ' '.join(h['question'] + ' ' + (h.get('standalone') or '') for h in history)
+    dialogue = questions + ' ' + ' '.join(h.get('answer_text') or '' for h in history)
+    asked = {_tok(t) for t in CLAIM_TOKENS.findall(questions)}
+    if any(_tok(t) not in asked for t in CLAIM_TOKENS.findall(rewritten)):
+        return False
+    words = lambda text: {m.group(0).lower().replace('ё', 'е') for m in NUMBER_WORDS.finditer(text)}
+    if words(rewritten) - words(questions):
+        return False
+    if len(NEGATION.findall(rewritten)) > len(NEGATION.findall(questions)):
+        return False
+    have = set(stem_text(rewritten).split())
+    covers = lambda stems, s: any(h.startswith(s[:5]) or s.startswith(h[:5]) and len(h) >= 4 for h in stems)
+    if not all(covers(have, s) for s in question_terms(question)):
+        return False
+    source = set(stem_text(dialogue).split())
+    return all(covers(source, s) for s in question_terms(rewritten))
 
 
 def _bare(text):
@@ -805,6 +919,7 @@ FAILURES = {
     'unavailable': 'Модель сейчас недоступна, поэтому ответ не сформирован.',
     'context': 'Найденных фрагментов слишком много для модели, поэтому ответ не сформирован; попробуйте уточнить вопрос.',
     'format': 'Модель вернула ответ в неверном формате, поэтому он не показан; повторите вопрос.',
+    'length': 'Ответ модели оказался слишком длинным и оборвался, поэтому он не показан; уточните вопрос.',
     'server': 'Сервер модели вернул ошибку, поэтому ответ не сформирован.',
 }
 
@@ -812,6 +927,8 @@ FAILURES = {
 def _failure(exc):
     """Why the generator gave no answer: a key of FAILURES."""
     from urllib.error import HTTPError
+    if isinstance(exc, Truncated):
+        return 'length'
     if isinstance(exc, HTTPError):
         try:
             body = exc.read().decode('utf-8', 'replace')
@@ -836,6 +953,7 @@ def answer(db, question, when=None, deadline=None, failure=None):
         return None
     chunks, headers = build_context(db, question, when)
     started = time.perf_counter()
+    truncated = False
     if not chunks and not guard_enabled():
         content = {'status': 'insufficient', 'short_answer': '', 'items': [], 'missing': []}
     elif not chunks:
@@ -844,26 +962,47 @@ def answer(db, question, when=None, deadline=None, failure=None):
         content = {'status': topic(model, question), 'short_answer': '', 'items': [], 'missing': []}
     else:
         messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt(question, chunks, headers, when)}]
+
+        def generate():
+            nonlocal truncated
+            try:
+                return json.loads(model.complete(messages))
+            except Truncated as exc:
+                # Cut off at max_tokens: the whole statements before the cut, if any.
+                content = salvage(exc.content)
+                if content is None:
+                    raise
+                truncated = True
+                return content
+
         try:
             try:
-                content = json.loads(model.complete(messages))
+                content = generate()
             except (OSError, ValueError) as exc:
                 if _failure(exc) != 'context' or len(chunks) < 2:
                     raise
                 # Too long for the model's context: once more with the better half of the fragments.
                 chunks = chunks[:len(chunks) // 2]
                 messages[1]['content'] = prompt(question, chunks, headers, when)
-                content = json.loads(model.complete(messages))
-        except (OSError, ValueError, KeyError, IndexError) as exc:   # server down, broken JSON: extractive fallback
-            if failure is not None: failure.append(_failure(exc))
+                content = generate()
+            if not isinstance(content, dict):
+                raise ValueError('reply is not a JSON object')
+        except (OSError, ValueError, KeyError, IndexError, TypeError) as exc:   # server down, broken JSON: extractive fallback
+            reason = _failure(exc)
+            # The reason only, never the text: the log of a public site.
+            print(f'RAG: no generated answer ({reason}: {type(exc).__name__})', file=sys.stderr, flush=True)
+            if failure is not None: failure.append(reason)
             return None
+        if truncated:
+            print(f'RAG: reply cut off at {MAX_ANSWER_TOKENS} tokens, {len(content["items"])} whole statements kept',
+                  file=sys.stderr, flush=True)
     status = content.get('status')
     for c in chunks:
         c['header'] = headers.get((c['source_id'], c['version']), '')
     kept, dropped, short = verify(content, chunks, question, judge=lambda q, w, f: same_subject(model, q, w, f))
     result = {'status': status, 'short_answer': short, 'items': kept, 'dropped': dropped,
               'missing': gaps(content.get('missing'), kept),
-              'headers': headers, 'seconds': round(time.perf_counter() - started, 2)}
+              'headers': headers, 'seconds': round(time.perf_counter() - started, 2), 'truncated': truncated}
     # A false premise («Почему суточные 1000?»): the context sentence that states the value
     # is shown verbatim, after the unchanged main answer (nothing generated, nothing else changed).
     if status in ('answer', 'partial', 'insufficient') and chunks:

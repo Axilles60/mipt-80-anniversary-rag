@@ -5,7 +5,7 @@ import html
 import os
 import re
 import sqlite3
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from urllib.parse import parse_qs, quote, urlparse
 from .core import DEFAULT_DB, connect, connect_existing, form_answer, import_fixture, imported_parts
 from . import history
@@ -405,12 +405,16 @@ def render_rag(db, result, when, question=''):
         tag = 'li' if steps else 'p'
         content += '<' + tag + '>' + esc(text) + ''.join(links(c) for c in item['chunks']) + '</' + tag + '>'
     content += '</ol>' if steps else '</div>'
+    if result.get('truncated'):
+        # The reply was cut off at the model's output limit: only its whole, checked statements are shown.
+        content += ('<p class="n-fail">Ответ оказался длиннее, чем модель выдаёт за один раз: показана его '
+                    'проверенная часть. Уточните вопрос, чтобы получить остальное.</p>')
     # The model fills "missing" with noise on full answers: a gap is shown only
     # when it declared the answer partial.
     if status == 'partial':
-        # rag.gaps keeps only a short naming of each gap; with none left the line stays generic.
-        content += ('<p>Недостаточно данных для части вопроса' + (': ' + esc('; '.join(result['missing'])) if result['missing'] else '')
-                    + '.</p>')
+        # A fixed line, not the model's free text: its «what is missing» is checked by nothing and
+        # contradicted the answer («кабинет не указан» beside «кабинет — 310»; external audit of d0bba9b).
+        content += '<p>Недостаточно данных для части вопроса: в найденных документах нет подтверждённых сведений о ней.</p>'
     # Then the fragments the answer rests on, verbatim — what a reader checks the answer against.
     # Blocks, not <p>/<li>: they are quotes of the documents, not statements of the answer.
     chunks = list({c['id']: c for item in result['items'] for c in item['chunks']}.values())
@@ -570,6 +574,9 @@ class Handler(BaseHTTPRequestHandler):
         for name, value in headers:
             self.send_header(name, value)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
+        # Pages carry the person's questions and answers (chat history): never kept by a cache.
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -1115,4 +1122,7 @@ if __name__ == '__main__':
         if os.environ.get('NAVIGATOR_IMPORT_DIR'):
             IMPORTING['active'] = True
             threading.Thread(target=run_import, daemon=True).start()
-        HTTPServer((os.environ.get('HOST', '127.0.0.1'), int(os.environ.get('PORT', '8000'))), Handler).serve_forever()
+        # One thread per request: a generated answer takes seconds and must not block other visitors.
+        server = ThreadingHTTPServer((os.environ.get('HOST', '127.0.0.1'), int(os.environ.get('PORT', '8000'))), Handler)
+        server.daemon_threads = True
+        server.serve_forever()
