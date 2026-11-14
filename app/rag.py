@@ -63,8 +63,15 @@ SCHEMA = {
     },
     'required': ['status', 'short_answer', 'items', 'missing'],
 }
-CLAIM_TOKENS = re.compile(r'[\w.+-]+@[\w-]+\.[\w.-]+|\b[\w-]+\.(?:invalid|ru|com|org)\b[/\w.-]*|'
-                          r'\b[А-ЯA-Z]{1,4}-\d+\b|\b\d{1,2}:\d{2}\b|\b\d+(?:[.,]\d+)?\b')
+# Exact tokens of a statement, each compared whole (external audit of d23f0fc: a phone
+# split into numbers, initials and domains outside four zones passed with other values).
+CLAIM_TOKENS = re.compile(r'[\w.+-]+@[\w-]+\.[\w.-]+|'                 # e-mail
+                          r'\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b[/\w.-]*|'  # domain, URL, file name
+                          r'\b[А-ЯA-Z]{1,4}-\d+\b|'                    # form code КМ-7
+                          r'\b\d+(?:-\d+)+\b|'                         # phone 2-31-21, order number 300-2
+                          r'\b\d{1,2}:\d{2}\b|'                        # time
+                          r'\b[А-ЯЁ]\.\s?[А-ЯЁ]\.|'                    # initials К.А.
+                          r'\b\d+(?:[.,]\d+)?\b')
 
 
 def enabled():
@@ -328,7 +335,8 @@ def names(text):
 
 
 def _tok(token):
-    return _norm(token).rstrip('.,;:')
+    # «К. А.» is «К.А.»: no other token contains a space.
+    return _norm(token).rstrip('.,;:').replace(' ', '')
 
 
 GENERIC_TERMS = {'человек', 'день', 'неделя', 'месяц', 'год', 'час', 'минута', 'раз', 'срок', 'время', 'документ',
@@ -364,6 +372,46 @@ def question_terms(question):
     return out
 
 
+BOUND = (r'не\s+менее|не\s+более|не\s+позднее|не\s+ранее|не\s+позже|не\s+раньше|свыше|более|менее|больше|меньше|'
+         r'в\s+течение|до|от|минимум|максимум')
+UPPER = ('не менее', 'не ранее', 'не раньше', 'свыше', 'более', 'больше', 'от', 'минимум')
+UNIT = (r'(?:(?:рабоч|календарн)\w*\s+)?(?:дн\w*|ден\w*|час\w*|лет\b|год\w*|месяц\w*|недел\w*|минут\w*|'
+        r'тысяч\w*(?:\s+услов\w*\s+единиц\w*)?|услов\w*\s+единиц\w*|символ\w*|процент\w*|человек\w*|участник\w*)')
+AMOUNT = re.compile(r'(?:\b(' + BOUND + r')\s+)?(?<![\w.,:-])(\d+(?:[.,]\d+)?)(?![\d:]|[.,]\d)\s+(' + UNIT + ')', re.I)
+# Each unit from the start of a word: «участников» contains «час».
+BASES = tuple((name, r'(?:^|\s)(?:' + pattern + ')') for name, pattern in (
+    ('тысяч', 'тысяч'), ('у.е.', 'услов'), ('человек', 'человек|участник'), ('час', 'час'), ('день', 'дн|ден|дне'),
+    ('год', 'год|лет'), ('месяц', 'месяц'), ('неделя', 'недел'), ('минута', 'минут'), ('символ', 'символ'),
+    ('процент', 'процент')))
+
+
+def amounts(text):
+    """(value, unit, qualifiers, bound) of every amount with a unit: («3», «день», {рабочих}, «down»)."""
+    out = []
+    for bound, value, unit in AMOUNT.findall(text):
+        unit = _norm(unit)
+        base = next(name for name, pattern in BASES if re.search(pattern, unit))
+        quals = frozenset(q for q, p in (('рабочих', 'рабоч'), ('календарных', 'календар')) if p in unit)
+        direction = None if not bound else ('up' if _norm(bound) in UPPER else 'down')
+        out.append((value.replace(',', '.'), base, quals, direction))
+    return out
+
+
+# Words whose «не» belongs to a bound («не менее») or to a statement of absence (checked apart).
+POLARITY_SKIP = ('мене', 'боле', 'позд', 'ране', 'позж', 'рань', 'свыш', 'тольк', 'указа', 'упоми', 'содер', 'преду',
+                 'приве', 'опред', 'устан', 'сказа', 'говор', 'найде')
+
+
+def polarity(text):
+    """{first five letters of a word: {True if preceded by «не», False otherwise}}."""
+    words = re.findall(r'[а-яё]+', _norm(text))
+    out = {}
+    for i, w in enumerate(words):
+        if len(w) >= 5 and not w.startswith(POLARITY_SKIP):
+            out.setdefault(w[:5], set()).add(i > 0 and words[i - 1] == 'не')
+    return out
+
+
 def supported(text, cited_texts, question=''):
     """Every exact token of a statement and most of its content words occur in the cited text.
 
@@ -374,17 +422,37 @@ def supported(text, cited_texts, question=''):
     from .stemming import query_stems, stem_text
     # Numbers, codes and addresses must be in the cited text itself, not in its heading.
     cited_raw = ' '.join(t.split(HEAD_END)[-1] for t in cited_texts)
-    support = _norm(cited_raw)
-    # Whole tokens split by the same pattern: 10 is not found in 20100, parts of 01.10.2023 are.
-    # Numbers, dates and order numbers may come from the heading (the reader sees the
-    # document's requisites in «Источник»); amounts with a unit only from the text below.
-    have_tokens = {_tok(t) for t in CLAIM_TOKENS.findall(' '.join(cited_texts).replace(HEAD_END, ' '))}
-    exact = [t for t in CLAIM_TOKENS.findall(text) if _tok(t) not in have_tokens]
-    # A number with its unit must occur with the same unit («700 тысяч» is not «700 условных единиц»).
-    exact += [f'{v} {u}' for v, u in QUANTITY.findall(text)
-              if not re.search(r'(?<![\w.,:-])' + re.escape(v) + r'\s+(?:\w+\s+)?' + re.escape(u.lower()[:5]), support)]
+    heading = ' '.join(t.split(HEAD_END)[0] for t in cited_texts if HEAD_END in t)
+    # Whole tokens split by the same pattern: 10 is not found in 20100, 2-21-31 not in 2-31-21.
+    body_tokens = {_tok(t) for t in CLAIM_TOKENS.findall(cited_raw)}
+    head_tokens = {_tok(t) for t in CLAIM_TOKENS.findall(heading)}
+    exact = []
+    for t in CLAIM_TOKENS.findall(text):
+        k = _tok(t)
+        if k in body_tokens:
+            continue
+        # The heading gives the document's requisites (the reader sees them in «Источник»):
+        # a date, an order number, a year, or a number written as «№ 99», «Приложение 1»,
+        # «пункт 4» — not an amount.
+        if k in head_tokens and (re.search(r'[-.]', k) or re.fullmatch(r'(?:19|20)\d\d', k)
+                                 or re.search(r'(?:№|приложени\w*|пункт\w*|п\.|раздел\w*|стать\w*|глав\w*)\s*'
+                                              + re.escape(t) + r'(?!\w)', text, re.I)):
+            continue
+        exact.append(t)
+    # An amount must occur with the same unit («8 рабочих часов» is not «8 рабочих дней»,
+    # «700 тысяч» is not «700 условных единиц») and not with the opposite bound
+    # («не менее 7» is not «в течение 7», «не более 12» is not «не менее 12»).
+    cited_amounts = amounts(cited_raw)
+    for value, base, quals, bound in amounts(text):
+        if not any(value == v and base == b and quals <= q and (bound is None or d is None or bound == d)
+                   for v, b, q, d in cited_amounts):
+            exact.append(f'{value} {base}' + (f' ({bound})' if bound else ''))
     if exact:
         return False, exact
+    # «не запрещено» from «запрещено»: a word the cited text uses only with the other polarity.
+    flipped = [w for w, signs in polarity(text).items() if (other := polarity(cited_raw).get(w)) and not signs & other]
+    if flipped:
+        return False, ['отрицание: ' + ' '.join(flipped)]
     have = set(stem_text(' '.join(cited_texts)).split())
     alien = [w for w in names(text) if not any(h.startswith(w[:5]) for h in have)]
     if alien:                     # «Дирекция по информационным технологиям» cited from «Дирекция по науке»
@@ -474,6 +542,16 @@ def foreign_words(question, why):
     return [w for w in re.findall(r'[А-Яа-яЁё-]{3,}', question) if any(stem(w.lower()).startswith(s[:5]) for s in stems)]
 
 
+def without_absence(text, cited_texts):
+    """The statement without its sentences saying that the documents give nothing
+    («В приказе № 77-3 не указан срок»): such a sentence is a claim about the whole base,
+    no citation can support it. Kept only when the cited text says the same itself."""
+    support = _norm(' '.join(cited_texts))
+    parts = re.split(r'(?<=[.;!?])\s+(?=[А-ЯЁA-Z«(])', text)
+    keep = [p for p in parts if not (m := ABSENCE.search(p)) or _norm(m.group(0)) in support]
+    return ' '.join(keep).strip()
+
+
 def verify(raw, chunks, question='', judge=None):
     """Keep statements whose cited chunks support them; report what was dropped.
 
@@ -481,15 +559,14 @@ def verify(raw, chunks, question='', judge=None):
     subject under another name (a synonym); asked only when the subject check failed."""
     kept, dropped = [], []
     for item in raw.get('items') or []:
-        text = clean_claim(str(item.get('text') or ''))
-        if ABSENCE.search(text) and not CLAIM_TOKENS.search(text):
-            # «The documents do not state X» is a gap, not a fact: it is not shown
-            # as a cited statement (a fragment would seem to confirm the absence).
-            continue
         sources = [n for n in item.get('sources') or [] if isinstance(n, int) and 1 <= n <= len(chunks)]
+        sources = list(dict.fromkeys(sources))
+        # «The documents do not state X» is a gap, not a fact: it is not shown as a cited
+        # statement (a fragment would seem to confirm the absence) — unless the cited text
+        # says it itself («выплата премии не предусмотрена» is a norm).
+        text = without_absence(clean_claim(str(item.get('text') or '')), [chunks[n - 1]['text'] for n in sources])
         if not text:
             continue
-        sources = list(dict.fromkeys(sources))
         ok, why = supported(text, [support_text(chunks[n - 1]) for n in sources], question) if sources else (False, ['нет ссылки на фрагмент'])
         if not ok and judge and why and str(why[0]).startswith('предмет: '):
             # «бланк» vs «ФОРМА заявления», «удалённая» vs «дистанционная»: the corpus and the
@@ -509,8 +586,10 @@ def verify(raw, chunks, question='', judge=None):
             kept.append({'text': text, 'chunks': [chunks[n - 1] for n in dict.fromkeys(sources)]})
         else:
             dropped.append({'text': text, 'why': ', '.join(map(str, why))})
-    short = clean_claim(str(raw.get('short_answer') or ''))
-    if short and not kept and not (ABSENCE.search(short) and not CLAIM_TOKENS.search(short)):
+    # V26: «Срок сдачи авансового отчёта не указан» as the short answer while the documents give it.
+    cited = [c['text'] for item in kept for c in item['chunks']] or [c['text'] for c in chunks]
+    short = without_absence(clean_claim(str(raw.get('short_answer') or '')), cited)
+    if short and not kept:
         # Every item failed, but the short answer may state the fact cleanly:
         # it is kept only if some context fragments support it by the same rule.
         found = repair(short, chunks, question=question)

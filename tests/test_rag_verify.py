@@ -201,6 +201,91 @@ class SubjectTest(unittest.TestCase):
         self.assertEqual(len(kept), 1)
 
 
+def one(claim, source, question='', header=''):
+    """Kept texts for one claim citing one chunk."""
+    chunk = {'id': 1, 'text': source, 'header': header}
+    kept, _, _ = rag.verify({'items': [{'text': claim, 'sources': [1]}]}, [chunk], question)
+    return [k['text'] for k in kept]
+
+
+class AuditProbeTest(unittest.TestCase):
+    """Statements the external audit of commit d23f0fc showed to pass the check (V01–V18)."""
+
+    def test_negation_flip_is_dropped(self):
+        self.assertEqual(one('Передавать свою учётную запись и пароль другим лицам не запрещено.',
+                             'Передавать свою учётную запись и пароль другим лицам запрещено.'), [])
+
+    def test_opposite_operator_is_dropped(self):
+        self.assertEqual(one('Отдел закупок рассматривает заявку не менее 7 рабочих дней.',
+                             'Отдел закупок рассматривает заявку в течение 7 рабочих дней.'), [])
+        self.assertEqual(one('Пароль должен содержать не более 12 символов.',
+                             'Пароль должен содержать не менее 12 символов.'), [])
+
+    def test_same_operator_and_omitted_operator_pass(self):
+        src = 'Отдел закупок рассматривает заявку в течение 7 рабочих дней.'
+        self.assertTrue(one('Отдел закупок рассматривает заявку не более 7 рабочих дней.', src))
+        self.assertTrue(one('Отдел закупок рассматривает заявку 7 рабочих дней.', src))
+
+    def test_hours_are_not_days(self):
+        self.assertEqual(one('Первичная обработка обращения выполняется в течение 8 рабочих дней.',
+                             'Первичная обработка обращения выполняется в течение 8 рабочих часов.'), [])
+
+    def test_dropped_qualifier_still_passes(self):
+        self.assertTrue(one('Авансовый отчёт сдают в течение 3 дней со дня возвращения.',
+                            '3.1. Авансовый отчёт сдаётся в течение 3 рабочих дней со дня возвращения.'))
+
+    def test_added_qualifier_is_dropped(self):
+        self.assertEqual(one('Авансовый отчёт сдают в течение 3 рабочих дней.', 'Авансовый отчёт сдают в течение 3 календарных дней.'), [])
+
+    def test_phone_is_one_token(self):
+        self.assertEqual(one('Телефон бухгалтерии: 2-21-31.', 'Телефон бухгалтерии: 2-31-21.'), [])
+        self.assertTrue(one('Телефон бухгалтерии: 2-31-21.', 'Подразделение: Бухгалтерия; Телефон: 2-31-21'))
+
+    def test_initials_are_one_token(self):
+        self.assertEqual(one('Финансодержатель кафедры — Седов И.О.', 'Финансодержатель кафедры — Седов К.А.'), [])
+        self.assertTrue(one('Финансодержатель кафедры — Седов К. А.', 'Финансодержатель кафедры — Седов К.А.'))
+
+    def test_number_from_heading_only_as_requisite(self):
+        self.assertEqual(one('Пароль должен содержать не менее 99 символов.', 'Пароль должен содержать не менее 12 символов.',
+                             header='ПРИКАЗ № 99'), [])
+        self.assertTrue(one('По приказу № 99 пароль должен содержать не менее 12 символов.',
+                            'Пароль должен содержать не менее 12 символов.', header='ПРИКАЗ № 99'))
+        # T30: the appendix number is in the document title.
+        self.assertTrue(one('Бланк заявления — в Приложении 1 к порядку выдачи пропусков.',
+                            'ФОРМА заявления на постоянный пропуск', header='Приложение 1 к порядку выдачи пропусков'))
+
+    def test_any_domain_is_a_token(self):
+        self.assertEqual(one('Обращение о сбое оборудования подаётся через портал help.other.example.',
+                             'Обращение о сбое оборудования подаётся через портал help.example.invalid.'), [])
+
+    def test_verbatim_negative_norm_is_kept(self):
+        self.assertEqual(one('Выплата премии не предусмотрена.', 'Выплата премии не предусмотрена.'), ['Выплата премии не предусмотрена.'])
+
+    def test_absence_about_the_documents_is_not_a_fact(self):
+        # T127: the order number makes the statement look checkable; it is a claim about the corpus.
+        self.assertEqual(one('В приказе № 77-3 не указан срок выдачи пропуска.',
+                             'Приказ № 41-1 признать утратившим силу с 01.07.2022.', header='Приказ № 77-3'), [])
+
+    def test_absence_sentence_is_cut_from_a_claim(self):
+        self.assertEqual(one('Приказ № 41-1 утратил силу с 01.07.2022. В приказе № 77-3 не указан срок выдачи пропуска.',
+                             'Приказ № 41-1 признать утратившим силу с 01.07.2022.', header='Приказ № 77-3'),
+                         ['Приказ № 41-1 утратил силу с 01.07.2022.'])
+
+    def test_absence_short_answer_is_not_shown(self):
+        # V26: «срок не указан» shown as the short answer while the documents give it.
+        raw = {'short_answer': 'Срок сдачи авансового отчёта не указан в документах. Удостоверение сдают в течение 10 рабочих дней.',
+               'items': [{'text': 'Копию удостоверения сдают в течение 10 рабочих дней.', 'sources': [1]}]}
+        chunk = {'id': 1, 'text': '2.1. Копию удостоверения сдают в отдел кадров в течение 10 рабочих дней.'}
+        _, _, short = rag.verify(raw, [chunk])
+        self.assertEqual(short, 'Удостоверение сдают в течение 10 рабочих дней.')
+
+    def test_controls(self):
+        self.assertEqual(one('Суточные составляют 9000 условных единиц.', 'Суточные составляют 700 условных единиц.'), [])
+        self.assertTrue(one('Суточные составляют 700 условных единиц.', 'Суточные составляют 700 условных единиц.'))
+        self.assertTrue(one('Закупка до 100 тысяч условных единиц проводится у единственного поставщика.',
+                            '1.1. Закупка стоимостью до 100 тысяч условных единиц проводится у единственного поставщика.'))
+
+
 class ConfidenceTest(unittest.TestCase):
     def test_without_reranker_always_confident(self):
         self.assertTrue(rag.confident([{'id': 1}]))
