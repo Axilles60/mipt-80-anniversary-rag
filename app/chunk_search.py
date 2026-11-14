@@ -5,6 +5,8 @@ cosine over chunk vectors, reciprocal rank fusion — the same scheme and
 z-score gates as for fragments (iterations 5–7). Retrieval mode follows
 NAVIGATOR_RETRIEVAL (bm25 | dense | hybrid). Chunks of versions that are
 repealed or not in force on the question's date are dropped (iteration 15).
+With NAVIGATOR_RERANK=1 the top candidates are reordered by a local
+cross-encoder (app/rerank.py, stage R3).
 """
 import json
 
@@ -78,7 +80,8 @@ def search(db, question, k=10, when=None):
     out = [r for r in out if states[(r['source_id'], r['version'])][0] in ('ok', 'uncertain')]
     for r in out:
         r['meta'] = json.loads(r['meta'] or '{}')
-    return out[:k]
+    from . import rerank
+    return rerank.rerank(question, out)[:k]
 
 
 def parent(db, chunk):

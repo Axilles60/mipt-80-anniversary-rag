@@ -238,6 +238,7 @@ def main():
     p.add_argument('--config', action='append', default=[], help='name=VAR=value;VAR=value')
     p.add_argument('--report', required=True)
     p.add_argument('--only', help='comma-separated question IDs')
+    p.add_argument('--retrieval-only', action='store_true', help='ranking metrics only, no answers (fast A/B of search)')
     args = p.parse_args()
     report_path = Path(args.report)
     if report_path.exists() or report_path.with_suffix('.html').exists():
@@ -253,7 +254,7 @@ def main():
         paths, needles = build(root)
         db_path = root / 'db'
         env = dict(os.environ, NAVIGATOR_DB=str(db_path), HOST='127.0.0.1')
-        for key in ('NAVIGATOR_MODEL', 'NAVIGATOR_RETRIEVAL', 'NAVIGATOR_PIPELINE', 'NAVIGATOR_IMPORT_DIR'): env.pop(key, None)
+        for key in ('NAVIGATOR_MODEL', 'NAVIGATOR_RETRIEVAL', 'NAVIGATOR_PIPELINE', 'NAVIGATOR_IMPORT_DIR', 'NAVIGATOR_RERANK'): env.pop(key, None)
         subprocess.run([sys.executable, '-m', 'app', 'import', *paths, '--manifest', str(manifest)],
                        env=env, cwd=ROOT, check=True, capture_output=True)
         from app.core import connect
@@ -270,11 +271,19 @@ def main():
                 from app import chunk_search, chunking
                 chunking.ensure(db)
                 chunk_keys = {r['id']: keys_in(r['text'] or '', needles) for r in db.execute('SELECT id, text FROM chunks WHERE level=2')}
-                chunk_ranked = {c['id']: [r['id'] for r in chunk_search.search(db, c['question'], k=10, when=c.get('date') or None)]
-                                for c in cases}
+                chunk_ranked, timings = {}, []
+                for c in cases:
+                    started = time.perf_counter()
+                    chunk_ranked[c['id']] = [r['id'] for r in chunk_search.search(db, c['question'], k=10, when=c.get('date') or None)]
+                    timings.append(time.perf_counter() - started)
+                timings.sort()
                 rank = {**{'fragments.' + k: v for k, v in rank.items()},
-                        **{'chunks.' + k: v for k, v in ranking(cases, chunk_ranked, chunk_keys).items()}}
-                summary, results = answers(cases, dict(env, **flags), db, needles)
+                        **{'chunks.' + k: v for k, v in ranking(cases, chunk_ranked, chunk_keys).items()},
+                        'chunks.search_p50_s': round(timings[len(timings) // 2], 3) if timings else None}
+                if args.retrieval_only:
+                    summary, results = {}, []
+                else:
+                    summary, results = answers(cases, dict(env, **flags), db, needles)
             for k, v in saved.items():
                 if v is None: os.environ.pop(k, None)
                 else: os.environ[k] = v
