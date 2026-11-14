@@ -22,6 +22,24 @@ class VerifyTest(unittest.TestCase):
         self.assertEqual(dropped, [])
         self.assertEqual(sorted(c['id'] for c in kept[0]['chunks']), [1, 2])
 
+    def test_number_inside_longer_number_is_not_support(self):
+        raw = {'items': [{'text': 'Код Лаборатории прикладной оптики — 10.', 'sources': [2]}]}
+        kept, _, _ = rag.verify(raw, CHUNKS)
+        self.assertEqual(kept, [])
+
+    def test_number_with_another_unit_is_not_support(self):
+        chunks = [{'id': 4, 'text': '1.2. Закупка стоимостью от 100 до 600 тысяч условных единиц проводится запросом котировок не менее чем у 3 поставщиков.'},
+                  {'id': 5, 'text': '2.1. Суточные выплачиваются в размере 700 условных единиц за каждый день командировки.'}]
+        raw = {'items': [{'text': 'Закупка стоимостью 700 тысяч условных единиц проводится запросом котировок.', 'sources': [1, 2]}]}
+        kept, _, _ = rag.verify(raw, chunks)
+        self.assertEqual(kept, [])
+
+    def test_unit_may_follow_a_qualifier(self):
+        chunks = [{'id': 6, 'text': '3.1. Работник сдаёт авансовый отчёт по форме КМ-9 в бухгалтерию в течение 3 рабочих дней со дня возвращения.'}]
+        raw = {'items': [{'text': 'Авансовый отчёт сдают в бухгалтерию в течение 3 дней со дня возвращения.', 'sources': [1]}]}
+        kept, _, _ = rag.verify(raw, chunks)
+        self.assertEqual(len(kept), 1)
+
     def test_unsupported_number_is_dropped(self):
         raw = {'items': [{'text': 'Рабочий день заканчивается в 19:00.', 'sources': [3]}]}
         kept, dropped, _ = rag.verify(raw, CHUNKS)

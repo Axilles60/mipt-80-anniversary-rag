@@ -96,6 +96,26 @@ def build(root):
     return paths, needles
 
 
+def fold(text):
+    """ё → е: facts and forbidden patterns are written either way."""
+    return text.replace('ё', 'е').replace('Ё', 'Е')
+
+
+def has_token(token, text):
+    """A number, code or address of a statement is one of the tokens of the cited text,
+    split by the same pattern: 10 is not found in 20100, parts of 01.10.2023 are."""
+    return norm(token) in {norm(t) for t in CLAIM_TOKENS.findall(text)}
+
+
+GAP = re.compile(r'Недостаточно данных для части вопроса:.*?(?=Самопроверка|Источник:|Применимость|$)', re.S)
+
+
+def without_gap(body):
+    """The answer without its «no data for part of the question: …» line: a forbidden
+    statement must be asserted, not named as missing."""
+    return GAP.sub(' ', body)
+
+
 def keys_in(text, needles):
     t = norm(text)
     return sorted(k for k, n in needles.items() if n and n in t)
@@ -155,7 +175,7 @@ def answers(cases, env, db, needles):
             seconds = time.perf_counter() - started
             parsed = Items(); parsed.feed(page)
             body = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', page.split('</form>', 1)[-1])))
-            cited, unsupported, claims = [], [], 0
+            cited, unsupported, claims, detail = [], [], 0, []
             for item in parsed.items:
                 texts, rows = [], {}
                 for href in item['hrefs']:
@@ -174,16 +194,18 @@ def answers(cases, env, db, needles):
                 if not texts or item['text'].strip().startswith(('Ограничение:', 'Источник:', 'Применимость')):
                     continue
                 claims += 1
-                support = norm(' '.join(unit_text(db, parse_qs(urlsplit(h).query).get('id', [''])[0]) for h in item['hrefs']))
+                support = ' '.join(unit_text(db, parse_qs(urlsplit(h).query).get('id', [''])[0]) for h in item['hrefs'])
                 claim = re.sub(r'\b[A-Z][\w-]*@[0-9a-f]{8,}#\S+', ' ', item['text'])   # drop printed fragment IDs
-                missing = [t for t in CLAIM_TOKENS.findall(claim) if norm(t) not in support]
+                missing = [t for t in CLAIM_TOKENS.findall(claim) if not has_token(t, support)]
                 if missing: unsupported.append({'text': item['text'][:200], 'missing': missing[:5]})
+                item_keys = sorted({k for t in texts for k in keys_in(t, needles)})
+                detail.append({'text': claim.strip()[:400], 'keys': item_keys})
             cited_keys = [keys_in(u, needles) for _, u in cited]
             exp = set(c['expected'])
             relevant = [k for k in cited_keys if set(k) & exp]
             grounded = {x for k in cited_keys for x in k} & exp
-            facts = [f for f in c['facts'] if re.search(f, body, re.I)]
-            forbidden = [f for f in c['forbidden'] if re.search(f, body, re.I)]
+            facts = [f for f in c['facts'] if re.search(fold(f), fold(body), re.I)]
+            forbidden = [f for f in c['forbidden'] if re.search(fold(f), fold(without_gap(body)), re.I)]
             off_topic = bool(OFF_TOPIC.search(body))
             gap = REFUSAL in body
             if c['expect'] in ('insufficient', 'off_topic'):
@@ -196,10 +218,13 @@ def answers(cases, env, db, needles):
                 verdict = 'incomplete'
             else:
                 verdict = 'correct'
+            # Claims backed only by fragments without an expected unit: a «correct» answer may
+            # still contain a false statement about a neighbouring subject (manual review).
+            suspect = [d for d in detail if c['expect'] in ('answer', 'partial') and d['keys'] and not set(d['keys']) & exp]
             out.append({'id': c['id'], 'type': c['type'], 'question': c['question'], 'expect': c['expect'], 'verdict': verdict,
                         'grounding': f'{len(grounded)}/{len(exp)}', 'cited_keys': cited_keys, 'facts_missing': [f for f in c['facts'] if f not in facts],
                         'forbidden_found': forbidden, 'unsupported': unsupported, 'claims': claims, 'off_topic_said': off_topic,
-                        'seconds': round(seconds, 3), 'answer': body[:1200]})
+                        'seconds': round(seconds, 3), 'answer': body[:3000], 'claims_detail': detail, 'suspect': suspect})
     finally:
         server.terminate(); server.wait(timeout=30)
     expecting = [r for r in out if r['expect'] in ('answer', 'partial')]
@@ -212,6 +237,7 @@ def answers(cases, env, db, needles):
                'incomplete': sum(r['verdict'] == 'incomplete' for r in out),
                'false_answers': sum(r['verdict'] == 'false_answer' for r in out),
                'missed': sum(r['verdict'] == 'missed' for r in out),
+               'suspect_correct': sum(1 for r in out if r['verdict'] == 'correct' and r['suspect']),
                'grounding': round(ground_num / ground_den, 3) if ground_den else None,
                'citation_precision': round(relevant_total / cited_total, 3) if cited_total else None,
                'unsupported_claims': f"{sum(len(r['unsupported']) for r in out)}/{sum(r['claims'] for r in out)}",

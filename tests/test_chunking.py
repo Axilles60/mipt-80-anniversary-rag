@@ -75,6 +75,7 @@ class ChunkingTest(unittest.TestCase):
         row = next(c for c in self.children() if c['meta'].get('type') == 'sheet_row' and 'Отдел учёта' in c['text'])
         self.assertIn('Дирекция ›', row['index_text'])                     # parent row path
         self.assertIn('Название: Отдел учёта', row['text'])
+        self.assertTrue(row['text'].startswith('Дирекция › '))           # the generator sees the parent row too
         # A row citation covers every cell (code, name, level), not only the first one.
         cells = [self.con.execute('SELECT text FROM import_fragments WHERE id=?', (cid,)).fetchone()['text']
                  for cid in row['meta']['cells']]

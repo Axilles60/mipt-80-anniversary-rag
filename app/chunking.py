@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS chunk_index (key TEXT PRIMARY KEY, value TEXT);
 '''
 # Changing how chunks or their full-text index are built bumps this value;
 # ensure() then rebuilds every version once.
-INDEX_VERSION = '3-sheet-row-cells'
+INDEX_VERSION = '4-table-headers'
 _TITLE_STYLES = ('title', 'heading', 'заголов', 'subtitle')
 # A template: blanks to fill in, or a capitalised FORM title (not "по форме КМ-7").
 _FORM = re.compile(r'_{4,}|«\s*_+\s*»|\bФОРМА\b')
@@ -194,7 +194,8 @@ def build(db, source_id, version, title=None):
             header = tables[prefix]
             body = '; '.join((f'{h}: {c}' if h and h != c else c) for h, c in zip(header + [''] * len(cells), cells) if c.strip())
             ord_ += 1
-            children.append({'fragment_id': row['id'], 'start': 0, 'end': len(text), 'text': re.sub(r'\s+', ' ', text).strip(),
+            # The generator sees what the index sees: «column: value», not the bare cells.
+            children.append({'fragment_id': row['id'], 'start': 0, 'end': len(text), 'text': body,
                              'index_body': body, 'section': section, 'ord': ord_,
                              'meta': {'type': 'table_row', 'kind': 'norm', 'page': page}})
             continue
@@ -252,7 +253,9 @@ def build(db, source_id, version, title=None):
                 path = {l: n for l, n in path.items() if l < level}; path[level] = name
             body = '; '.join(f'{h}: {v}' if h and h != v else v for h, v in pairs)
             ord_ += 1
-            children.append({'fragment_id': entries[0][0], 'start': None, 'end': None, 'text': body,
+            # Parent rows (directorate of a laboratory) are part of what the row means.
+            children.append({'fragment_id': entries[0][0], 'start': None, 'end': None,
+                             'text': (' › '.join(parents) + ' › ' if parents else '') + body,
                              'index_body': (' › '.join(parents) + ' › ' if parents else '') + body,
                              'section': sections[0], 'ord': ord_,
                              'meta': {'type': 'sheet_row', 'kind': 'norm', 'sheet': sheet_name, 'row': number,

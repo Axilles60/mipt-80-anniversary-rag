@@ -320,8 +320,14 @@ def supported(text, cited_texts):
     """Every exact token of a statement and most of its content words occur in the cited text."""
     from .stemming import query_stems, stem_text
     # Numbers, codes and addresses must be in the cited text itself, not in its heading.
-    support = _norm(' '.join(t.split(HEAD_END)[-1] for t in cited_texts))
-    exact = [t for t in CLAIM_TOKENS.findall(text) if _norm(t) not in support]
+    cited_raw = ' '.join(t.split(HEAD_END)[-1] for t in cited_texts)
+    support = _norm(cited_raw)
+    # Whole tokens split by the same pattern: 10 is not found in 20100, parts of 01.10.2023 are.
+    have_tokens = {_norm(t) for t in CLAIM_TOKENS.findall(cited_raw)}
+    exact = [t for t in CLAIM_TOKENS.findall(text) if _norm(t) not in have_tokens]
+    # A number with its unit must occur with the same unit («700 тысяч» is not «700 условных единиц»).
+    exact += [f'{v} {u}' for v, u in QUANTITY.findall(text)
+              if not re.search(r'(?<![\w.,:-])' + re.escape(v) + r'\s+(?:\w+\s+)?' + re.escape(u.lower()[:5]), support)]
     if exact:
         return False, exact
     have = set(stem_text(' '.join(cited_texts)).split())
@@ -436,12 +442,11 @@ def answer(db, question, when=None, deadline=None):
               'missing': [str(m) for m in content.get('missing') or [] if str(m).strip()],
               'headers': headers, 'seconds': round(time.perf_counter() - started, 2)}
     if status in ('answer', 'partial') and not kept:
-        if any(str(d['why']).startswith('имя') for d in dropped):
-            # The model answered about something the fragments do not name
-            # (a department or document absent from the base): no data, no fallback.
-            result.update(status='insufficient', items=[])
-            return result
-        return None          # nothing verifiable: extractive fallback
+        # Nothing the model said is supported by the cited text: «no data». The
+        # extractive answer is a fallback only when the generator is unavailable
+        # (above) — it does not pass these checks and must not bypass them.
+        result.update(status='insufficient', items=[])
+        return result
     if status in ('insufficient', 'off_topic'):
         result['items'] = []
     return result
