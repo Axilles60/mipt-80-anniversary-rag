@@ -445,8 +445,40 @@ ABSENCE = re.compile(r'\b(?:не\s+(?:указан|упомина|содерж|�
                      r'не\s+найден\w*)', re.I)
 
 
-def verify(raw, chunks, question=''):
-    """Keep statements whose cited chunks support them; report what was dropped."""
+SAME_SYSTEM = (
+    'Ты проверяешь, о том ли предмете говорит фрагмент документа. Дано слово из вопроса и фрагмент. '
+    'Ответь "same", если фрагмент говорит именно об этом предмете, возможно, другим словом (синоним, '
+    'официальное название того же самого). Ответь "different", если фрагмент говорит о другом, пусть и '
+    'похожем предмете (другое помещение, другое подразделение, другой вид документа, другая услуга).')
+SAME_SCHEMA = {'type': 'object', 'properties': {'verdict': {'type': 'string', 'enum': ['same', 'different']}},
+               'required': ['verdict']}
+
+
+def same_subject(model, question, word, fragment):
+    """Generator's verdict: is «word» of the question the fragment's subject under another name?
+    Any failure counts as «different» (the statement stays dropped)."""
+    try:
+        raw = json.loads(model.complete([{'role': 'system', 'content': SAME_SYSTEM},
+                                         {'role': 'user', 'content': f'Вопрос: {question}\nСлово из вопроса: «{word}»\n'
+                                                                     f'Фрагмент: {fragment}'}],
+                                        schema=SAME_SCHEMA, max_tokens=20))
+    except (OSError, ValueError, KeyError, IndexError):
+        return False
+    return raw.get('verdict') == 'same'
+
+
+def foreign_words(question, why):
+    """The question's own words behind a «предмет: …» rejection (stems → words as asked)."""
+    from .stemming import stem
+    stems = why[0][len('предмет: '):].split()
+    return [w for w in re.findall(r'[А-Яа-яЁё-]{3,}', question) if any(stem(w.lower()).startswith(s[:5]) for s in stems)]
+
+
+def verify(raw, chunks, question='', judge=None):
+    """Keep statements whose cited chunks support them; report what was dropped.
+
+    judge(question, word, fragment) -> True if the fragment speaks of the question's
+    subject under another name (a synonym); asked only when the subject check failed."""
     kept, dropped = [], []
     for item in raw.get('items') or []:
         text = clean_claim(str(item.get('text') or ''))
@@ -459,6 +491,14 @@ def verify(raw, chunks, question=''):
             continue
         sources = list(dict.fromkeys(sources))
         ok, why = supported(text, [support_text(chunks[n - 1]) for n in sources], question) if sources else (False, ['нет ссылки на фрагмент'])
+        if not ok and judge and why and str(why[0]).startswith('предмет: '):
+            # «бланк» vs «ФОРМА заявления», «удалённая» vs «дистанционная»: the corpus and the
+            # embeddings cannot tell synonyms from neighbouring subjects; one short question to
+            # the generator can. The rest of the statement must pass without these words.
+            words = foreign_words(question, why)
+            fragment = ' '.join(chunks[n - 1]['text'] for n in sources)
+            if words and all(judge(question, w, fragment) for w in words):
+                ok, why = supported(text, [support_text(chunks[n - 1]) for n in sources])
         if not ok:
             # A small model often states a correct fact but cites the wrong number:
             # look for context fragments that support the statement by the same rule.
@@ -533,7 +573,7 @@ def answer(db, question, when=None, deadline=None):
     status = content.get('status')
     for c in chunks:
         c['header'] = headers.get((c['source_id'], c['version']), '')
-    kept, dropped, short = verify(content, chunks, question)
+    kept, dropped, short = verify(content, chunks, question, judge=lambda q, w, f: same_subject(model, q, w, f))
     result = {'status': status, 'short_answer': short, 'items': kept, 'dropped': dropped,
               'missing': [str(m) for m in content.get('missing') or [] if str(m).strip()],
               'headers': headers, 'seconds': round(time.perf_counter() - started, 2)}

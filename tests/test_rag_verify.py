@@ -178,6 +178,23 @@ class SubjectTest(unittest.TestCase):
                                 [self.HALL], 'Сколько человек вмещает актовый зал?')
         self.assertEqual(kept, [])
 
+    def test_synonym_confirmed_by_judge_is_kept(self):
+        form = {'id': 3, 'text': 'Приложение 1 к порядку выдачи пропусков. ФОРМА заявления на постоянный пропуск', 'meta': {}}
+        raw = {'items': [{'text': 'Бланк заявления на постоянный пропуск — приложение 1 к порядку выдачи пропусков.', 'sources': [1]}]}
+        asked = []
+        judge = lambda q, w, f: asked.append(w) or True
+        kept, _, _ = rag.verify(raw, [form], 'Где взять бланк заявления на пропуск?', judge=judge)
+        self.assertEqual(len(kept), 1)
+        self.assertEqual(asked, ['бланк'])
+        kept, dropped, _ = rag.verify(raw, [form], 'Где взять бланк заявления на пропуск?', judge=lambda q, w, f: False)
+        self.assertEqual(kept, [])
+
+    def test_judge_not_asked_when_subject_is_covered(self):
+        judge = lambda q, w, f: self.fail('judge must not be asked')
+        kept, _, _ = rag.verify({'items': [{'text': 'Конференц-зал вмещает не более 120 человек.', 'sources': [1]}]},
+                                [self.HALL], 'Сколько человек вмещает конференц-зал АХО?', judge=judge)
+        self.assertEqual(len(kept), 1)
+
     def test_covered_subject_and_generic_words_pass(self):
         kept, _, _ = rag.verify({'items': [{'text': 'Конференц-зал вмещает не более 120 человек.', 'sources': [1]}]},
                                 [self.HALL], 'Сколько человек вмещает конференц-зал АХО?')
