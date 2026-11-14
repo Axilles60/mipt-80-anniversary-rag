@@ -132,6 +132,21 @@ def _norm(text):
 
 
 BRIDGE_FROM = 3
+ABSTAIN_BELOW = 0.003    # best cross-encoder score of the retrieved chunks (tuning, iteration 26)
+
+
+def confident(found):
+    """False when the reranker is on and no retrieved chunk is relevant to the
+    question: the generator is then not asked (refusal by retrieval confidence,
+    п. 47). Without the reranker there is no calibrated score: always True."""
+    scores = [c['rerank'] for c in found if 'rerank' in c]
+    if not scores:
+        return True
+    try:
+        threshold = float(os.environ.get('NAVIGATOR_ABSTAIN', ABSTAIN_BELOW))
+    except ValueError:
+        threshold = ABSTAIN_BELOW
+    return max(scores) >= threshold
 
 
 def bridge_enabled():
@@ -149,7 +164,9 @@ def bridge(db, question, found, when=None):
     out = []
     for c in found[:BRIDGE_FROM]:
         own = (c['source_id'], c['version'])
-        for b in chunk_search.search(db, question + '\n' + c['text'], k=10, when=when):
+        # No reranking here: the fused order is enough to pick the bridge, and the
+        # cross-encoder on CPU would run three more times per question.
+        for b in chunk_search.search(db, question + '\n' + c['text'], k=10, when=when, rerank=False):
             if b['id'] in have or (b['source_id'], b['version']) == own or b['meta'].get('kind') == 'toc':
                 continue
             have.add(b['id']); out.append(b)
@@ -164,7 +181,7 @@ def build_context(db, question, when=None):
     from .requisites import requisites, label
     found = chunk_search.search(db, question, k=RETRIEVE_K, when=when)
     found = [c for c in found if c['meta'].get('kind') != 'toc']
-    if not found:
+    if not found or not confident(found):
         return [], []
     chosen, seen, budget = [], set(), CONTEXT_TOKENS
     def add(chunk):

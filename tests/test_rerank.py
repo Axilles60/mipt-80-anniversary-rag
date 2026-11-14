@@ -27,6 +27,16 @@ class RerankTest(unittest.TestCase):
             os.environ.pop('NAVIGATOR_RERANK', None)
             self.assertEqual([c['id'] for c in rerank.rerank('Как получить пропуск?', chunks())], [0, 1, 2])
 
+    def test_on_by_default_in_rag_pipeline_only(self):
+        with mock.patch.dict(os.environ, {'NAVIGATOR_PIPELINE': 'rag'}):
+            os.environ.pop('NAVIGATOR_RERANK', None)
+            self.assertTrue(rerank.enabled())
+            os.environ['NAVIGATOR_RERANK'] = '0'
+            self.assertFalse(rerank.enabled())
+        with mock.patch.dict(os.environ, {'NAVIGATOR_PIPELINE': 'extractive'}):
+            os.environ.pop('NAVIGATOR_RERANK', None)
+            self.assertFalse(rerank.enabled())
+
     def test_missing_model_keeps_order_and_reports(self):
         with tempfile.TemporaryDirectory() as tmp:
             env = {'NAVIGATOR_RERANK': '1', 'NAVIGATOR_RERANK_MODEL': str(Path(tmp) / 'none')}

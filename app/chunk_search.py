@@ -67,7 +67,7 @@ def ranked_ids(db, question, gate=True):
     return dense.fuse(lex, [cid for cid, _, _ in scored if cid in keep])
 
 
-def search(db, question, k=10, when=None):
+def search(db, question, k=10, when=None, rerank=True):
     """Child chunks (dicts with meta) best first, applicable on ``when``."""
     ids = ranked_ids(db, question)
     if not ids:
@@ -80,8 +80,10 @@ def search(db, question, k=10, when=None):
     out = [r for r in out if states[(r['source_id'], r['version'])][0] in ('ok', 'uncertain')]
     for r in out:
         r['meta'] = json.loads(r['meta'] or '{}')
-    from . import rerank
-    return rerank.rerank(question, out)[:k]
+    if not rerank:
+        return out[:k]
+    from . import rerank as reranker
+    return reranker.rerank(question, out)[:k]
 
 
 def parent(db, chunk):

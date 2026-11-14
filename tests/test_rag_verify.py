@@ -34,6 +34,15 @@ class VerifyTest(unittest.TestCase):
         self.assertEqual([c['id'] for c in kept[0]['chunks']], [3])
 
 
+class ConfidenceTest(unittest.TestCase):
+    def test_without_reranker_always_confident(self):
+        self.assertTrue(rag.confident([{'id': 1}]))
+
+    def test_low_best_score_abstains(self):
+        self.assertFalse(rag.confident([{'rerank': 0.0005}, {'rerank': 0.001}]))
+        self.assertTrue(rag.confident([{'rerank': 0.0005}, {'rerank': 0.4}]))
+
+
 class TopicModel:
     def __init__(self, reply): self.reply, self.calls = reply, 0
     def complete(self, messages, schema=None, max_tokens=None):

@@ -1,6 +1,6 @@
 """Cross-encoder reranking of retrieved chunks (stage R3, sdd/rag-plan.md).
 
-Off by default; NAVIGATOR_RERANK=1 turns it on. The model is a local ONNX
+On in the RAG pipeline, off otherwise; NAVIGATOR_RERANK=1/0 overrides. The model is a local ONNX
 cross-encoder (default data/models/bge-reranker-v2-m3: BAAI/bge-reranker-v2-m3,
 int8, Apache-2.0), read from NAVIGATOR_RERANK_MODEL. It scores each
 (question, chunk) pair jointly; the top RERANK_DEPTH candidates of the fused
@@ -21,7 +21,12 @@ _models, _failures = {}, {}
 
 
 def enabled():
-    return os.environ.get('NAVIGATOR_RERANK', '').strip().lower() in ('1', 'on', 'true', 'yes')
+    """NAVIGATOR_RERANK=1/0; unset — on in the RAG pipeline (its refusal by
+    retrieval confidence needs the score), off otherwise."""
+    value = os.environ.get('NAVIGATOR_RERANK', '').strip().lower()
+    if not value:
+        return os.environ.get('NAVIGATOR_PIPELINE', '').strip().lower() == 'rag'
+    return value in ('1', 'on', 'true', 'yes')
 
 
 def depth():
