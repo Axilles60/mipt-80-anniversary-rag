@@ -2,3 +2,6 @@ PyMuPDF>=1.24,<2
 openpyxl>=3.1,<4
 Pillow>=10,<13
 snowballstemmer>=2.2,<4
+# Parts of speech of the question for the RAG subject check (MIT; optional at runtime)
+pymorphy3==2.0.6
+pymorphy3-dicts-ru==2.4.417150.4580142

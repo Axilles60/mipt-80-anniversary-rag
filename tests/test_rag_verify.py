@@ -160,6 +160,30 @@ class ConflictTest(unittest.TestCase):
         self.assertEqual(rag.conflicts([base, act], 'Сколько дней в неделю можно работать дистанционно?'), [])
 
 
+@unittest.skipUnless(rag._morph(), 'pymorphy3 is not installed')
+class SubjectTest(unittest.TestCase):
+    HALL = {'id': 1, 'text': '4. КЗ вмещает не более 120 участников; при большем числе заявка не рассматривается.',
+            'meta': {'document': 'ПОРЯДОК бронирования конференц-зала'}}
+    SUP = {'id': 2, 'text': '4.1. СП работает по рабочим дням с 8:30 до 17:30, в пятницу — до 16:15.',
+           'meta': {'document': 'РЕГЛАМЕНТ работы службы поддержки'}}
+
+    def test_neighbouring_subject_is_dropped(self):
+        kept, dropped, _ = rag.verify({'items': [{'text': 'Касса работает в пятницу до 16:15.', 'sources': [1]}]},
+                                      [self.SUP], 'До скольки работает касса в пятницу?')
+        self.assertEqual(kept, [])
+        self.assertIn('предмет', dropped[0]['why'])
+
+    def test_qualifier_of_the_subject_is_checked(self):
+        kept, _, _ = rag.verify({'items': [{'text': 'Актовый зал вмещает не более 120 человек.', 'sources': [1]}]},
+                                [self.HALL], 'Сколько человек вмещает актовый зал?')
+        self.assertEqual(kept, [])
+
+    def test_covered_subject_and_generic_words_pass(self):
+        kept, _, _ = rag.verify({'items': [{'text': 'Конференц-зал вмещает не более 120 человек.', 'sources': [1]}]},
+                                [self.HALL], 'Сколько человек вмещает конференц-зал АХО?')
+        self.assertEqual(len(kept), 1)
+
+
 class ConfidenceTest(unittest.TestCase):
     def test_without_reranker_always_confident(self):
         self.assertTrue(rag.confident([{'id': 1}]))

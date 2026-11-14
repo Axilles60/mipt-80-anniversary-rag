@@ -331,8 +331,46 @@ def _tok(token):
     return _norm(token).rstrip('.,;:')
 
 
-def supported(text, cited_texts):
-    """Every exact token of a statement and most of its content words occur in the cited text."""
+GENERIC_TERMS = {'человек', 'день', 'неделя', 'месяц', 'год', 'час', 'минута', 'раз', 'срок', 'время', 'документ',
+                 'вопрос', 'ответ', 'работник', 'сотрудник', 'организация', 'информация', 'данные', 'порядок', 'способ',
+                 'случай', 'количество', 'число', 'размер', 'правило', 'работа', 'рабочий', 'нужный', 'должный',
+                 'какой', 'который', 'такой', 'весь', 'каждый', 'свой', 'этот', 'другой', 'сколько', 'можно',
+                 # measures and states describe what is asked, they do not name a subject
+                 'минимальный', 'максимальный', 'предельный', 'действующий', 'текущий', 'обязательный',
+                 'новый', 'старый', 'последний', 'первый', 'основной', 'общий', 'обычный', 'дом'}
+
+
+@lru_cache(maxsize=1)
+def _morph():
+    try:
+        import pymorphy3
+        return pymorphy3.MorphAnalyzer()
+    except Exception:            # optional: without it the check is skipped
+        return None
+
+
+def question_terms(question):
+    """Nouns and adjectives of the question that name what is asked about
+    («актовый зал», «касса», «жалоба клиентов»), as stems; generic words excluded."""
+    morph = _morph()
+    if morph is None or not question:
+        return set()
+    from .stemming import stem
+    out = set()
+    for word in re.findall(r'[А-Яа-яЁё-]{3,}', question):
+        parse = morph.parse(word.lower())[0]
+        if parse.tag.POS in ('NOUN', 'ADJF', 'ADJS') and parse.normal_form not in GENERIC_TERMS:
+            out.add(stem(parse.normal_form))
+    return out
+
+
+def supported(text, cited_texts, question=''):
+    """Every exact token of a statement and most of its content words occur in the cited text.
+
+    With the question: the question's own subject words that the statement repeats must
+    occur in the cited text too — «актовый зал вмещает 120» cited from a fragment about
+    the conference hall, «касса работает до 16:15» from the support service hours are
+    statements about a subject the base does not cover."""
     from .stemming import query_stems, stem_text
     # Numbers, codes and addresses must be in the cited text itself, not in its heading.
     cited_raw = ' '.join(t.split(HEAD_END)[-1] for t in cited_texts)
@@ -351,6 +389,13 @@ def supported(text, cited_texts):
     alien = [w for w in names(text) if not any(h.startswith(w[:5]) for h in have)]
     if alien:                     # «Дирекция по информационным технологиям» cited from «Дирекция по науке»
         return False, ['имя: ' + ' '.join(alien)]
+    if question:
+        from .stemming import stem_text as _stems
+        claimed = set(_stems(text).split())
+        echoed = [q for q in question_terms(question) if any(c.startswith(q[:5]) for c in claimed)]
+        foreign = [q for q in echoed if not any(h.startswith(q[:5]) or q.startswith(h[:5]) and len(h) >= 4 for h in have)]
+        if foreign:
+            return False, ['предмет: ' + ' '.join(foreign)]
     stems = query_stems(text)
     if not stems:
         return True, []
@@ -358,7 +403,7 @@ def supported(text, cited_texts):
     return share >= 0.6, ([] if share >= 0.6 else [f'слова: {share:.0%}'])
 
 
-def repair(text, chunks, cited=()):
+def repair(text, chunks, cited=(), question=''):
     """Fragment numbers that support a statement whose own citation does not.
 
     One fragment first (best share of content stems), then a cited fragment plus
@@ -373,9 +418,9 @@ def repair(text, chunks, cited=()):
     # Keep the model's own fragment when it carries part of the statement.
     for base in sorted((b for b in cited if share(b) >= 0.3), key=share, reverse=True):
         for n in range(1, len(chunks) + 1):
-            if n != base and supported(text, [support_text(chunks[base - 1]), support_text(chunks[n - 1])])[0]:
+            if n != base and supported(text, [support_text(chunks[base - 1]), support_text(chunks[n - 1])], question)[0]:
                 return [base, n]
-    singles = [n for n in range(1, len(chunks) + 1) if supported(text, [support_text(chunks[n - 1])])[0]]
+    singles = [n for n in range(1, len(chunks) + 1) if supported(text, [support_text(chunks[n - 1])], question)[0]]
     return [max(singles, key=share)] if singles else None
 
 
@@ -400,7 +445,7 @@ ABSENCE = re.compile(r'\b(?:не\s+(?:указан|упомина|содерж|�
                      r'не\s+найден\w*)', re.I)
 
 
-def verify(raw, chunks):
+def verify(raw, chunks, question=''):
     """Keep statements whose cited chunks support them; report what was dropped."""
     kept, dropped = [], []
     for item in raw.get('items') or []:
@@ -413,11 +458,11 @@ def verify(raw, chunks):
         if not text:
             continue
         sources = list(dict.fromkeys(sources))
-        ok, why = supported(text, [support_text(chunks[n - 1]) for n in sources]) if sources else (False, ['нет ссылки на фрагмент'])
+        ok, why = supported(text, [support_text(chunks[n - 1]) for n in sources], question) if sources else (False, ['нет ссылки на фрагмент'])
         if not ok:
             # A small model often states a correct fact but cites the wrong number:
             # look for context fragments that support the statement by the same rule.
-            repaired = repair(text, chunks, sources)
+            repaired = repair(text, chunks, sources, question)
             if repaired:
                 sources, ok = repaired, True
         if ok:
@@ -428,12 +473,12 @@ def verify(raw, chunks):
     if short and not kept and not (ABSENCE.search(short) and not CLAIM_TOKENS.search(short)):
         # Every item failed, but the short answer may state the fact cleanly:
         # it is kept only if some context fragments support it by the same rule.
-        found = repair(short, chunks)
+        found = repair(short, chunks, question=question)
         if found:
             kept.append({'text': short, 'chunks': [chunks[n - 1] for n in found]})
             short = ''
     if short and kept:
-        ok, _ = supported(short, [support_text(c) for item in kept for c in item['chunks']])
+        ok, _ = supported(short, [support_text(c) for item in kept for c in item['chunks']], question)
         if not ok: short = ''
     elif not kept:
         short = ''
@@ -488,7 +533,7 @@ def answer(db, question, when=None, deadline=None):
     status = content.get('status')
     for c in chunks:
         c['header'] = headers.get((c['source_id'], c['version']), '')
-    kept, dropped, short = verify(content, chunks)
+    kept, dropped, short = verify(content, chunks, question)
     result = {'status': status, 'short_answer': short, 'items': kept, 'dropped': dropped,
               'missing': [str(m) for m in content.get('missing') or [] if str(m).strip()],
               'headers': headers, 'seconds': round(time.perf_counter() - started, 2)}
