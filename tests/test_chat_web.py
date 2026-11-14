@@ -260,5 +260,75 @@ class SourceDocumentTest(unittest.TestCase):
         self.assertIn('исходный файл (PDF', page)
 
 
+class RelationTest(unittest.TestCase):
+    """How a new question relates to the session: decided by code, before any model."""
+    EARLIER = [{'question': 'Кто рассматривает заявки на закупку?', 'standalone': 'Кто рассматривает заявки на закупку?',
+                'answer_text': 'Отдел закупок.'}]
+
+    def test_reference_or_missing_subject_is_a_follow_up(self):
+        for q in ('А где их кабинет?', 'А раньше?', 'Сколько дней?', 'Тот же вопрос про бухгалтерию', 'Почему так долго?'):
+            with self.subTest(q=q):
+                self.assertEqual(history.relation(q, self.EARLIER), 'follow')
+
+    def test_own_subject_is_a_new_topic(self):
+        for q in ('Где взять бланк заявления на пропуск?', 'Какой телефон у отдела кадров?', 'Кто подписывает заявку?'):
+            with self.subTest(q=q):
+                self.assertEqual(history.relation(q, self.EARLIER), 'new')
+
+    def test_first_question_is_new(self):
+        self.assertEqual(history.relation('А где их кабинет?', []), 'new')
+
+    def test_unchanged_rewrite_gets_the_previous_question(self):
+        model = FakeModel('А в пятницу?')
+        turns = [{'question': 'До скольки работает служба поддержки?', 'standalone': 'До скольки работает служба поддержки?',
+                  'answer_text': 'С 8:30 до 17:30.'}]
+        self.assertEqual(rag.condense(model, turns, 'А в пятницу?'), 'До скольки работает служба поддержки? А в пятницу?')
+
+    def test_chain_uses_questions_as_understood(self):
+        model = FakeModel('Какой телефон отдела закупок?')
+        turns = self.EARLIER + [{'question': 'А где их кабинет?', 'standalone': 'Где кабинет отдела закупок?', 'answer_text': 'Кабинет 310.'}]
+        rag.condense(model, turns, 'А телефон?')
+        self.assertIn('Где кабинет отдела закупок?', model.seen[0][1]['content'])
+
+    def test_now_stops_the_date(self):
+        self.assertTrue(history.NOW.search('А сейчас?'))
+        self.assertFalse(history.NOW.search('А раньше?'))
+
+    def test_session_window(self):
+        db = sqlite3.connect(':memory:'); db.row_factory = sqlite3.Row
+        c = history.new_id()
+        history.add(db, c, 'q1', 'q1', 'a1', '<p>a1</p>')
+        db.execute("UPDATE chat_turns SET created='2000-01-01 00:00:00'")
+        history.add(db, c, 'q2', 'q2', 'a2', '<p>a2</p>')
+        self.assertEqual([t['question'] for t in history.session(db, c)], ['q2'])
+
+
+class UnderstoodLineTest(unittest.TestCase):
+    """The line under a follow-up: meaning, the earlier question (a link), the date, «Это новый вопрос»."""
+    FIRST = {'n': 1, 'question': 'До скольки работает служба поддержки?', 'standalone': 'До скольки работает служба поддержки?'}
+
+    def line(self, turn):
+        from app.__main__ import understood
+        return understood(dict({'n': 2, 'asked_on': None}, **turn), {1: self.FIRST})
+
+    def test_rewritten_follow_up(self):
+        html_ = self.line({'question': 'А где их кабинет?', 'standalone': 'Где кабинет службы поддержки?', 'relation': 'follow', 'ref': 1})
+        self.assertIn('Понял вопрос как: «Где кабинет службы поддержки?» — уточнение к <a href="#t1">вопросу 1</a>', html_)
+        self.assertIn('name="fresh" value="1"', html_)
+
+    def test_joined_follow_up_names_the_earlier_question(self):
+        html_ = self.line({'question': 'А в пятницу?', 'standalone': 'До скольки работает служба поддержки? А в пятницу?',
+                           'relation': 'follow-joined', 'ref': 1})
+        self.assertIn('уточнение к <a href="#t1">вопросу 1</a> «До скольки работает служба поддержки?»', html_)
+
+    def test_date_carried_over(self):
+        html_ = self.line({'question': 'А раньше?', 'standalone': 'А раньше выдавали пропуск?', 'relation': 'follow+date',
+                           'ref': 1, 'asked_on': '2020-05-01'})
+        self.assertIn('на дату 01.05.2020', html_)
+
+    def test_new_topic_has_no_line(self):
+        self.assertEqual(self.line({'question': 'Где бланк?', 'standalone': 'Где бланк?', 'relation': 'new'}), '')
+
+
 if __name__ == '__main__':
     unittest.main()

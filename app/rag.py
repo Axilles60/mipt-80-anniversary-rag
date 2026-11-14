@@ -769,10 +769,13 @@ def condense(model, history, question):
     dialogue, not from answers: a rewritten question must not carry an unchecked value."""
     if not history or model is None:
         return question
-    dialog = '\n'.join(f'Вопрос: {h["question"]}\nОтвет: {h["answer_text"][:400]}' for h in history[-3:])
+    # Earlier questions as they were understood: a chain of follow-ups keeps its subject
+    # («А где их кабинет?» → «А телефон?» still about the procurement department).
+    dialog = '\n'.join(f'Вопрос: {h.get("standalone") or h["question"]}\nОтвет: {h["answer_text"][:400]}' for h in history[-3:])
     try:
         raw = model.complete([{'role': 'system', 'content': CONDENSE_SYSTEM},
-                              {'role': 'user', 'content': f'Диалог:\n{dialog}\n\nПоследний вопрос: {question}'}],
+                              {'role': 'user', 'content': f'Диалог:\n{dialog}\n\nПоследний вопрос (он продолжает диалог и '
+                                                          f'ссылается на предыдущий вопрос — назови его предмет): {question}'}],
                              schema=False, max_tokens=80)
     except (OSError, ValueError, KeyError, IndexError):
         return question
@@ -781,10 +784,21 @@ def condense(model, history, question):
     rewritten = re.sub(r'\s+', ' ', str(raw or '').strip().split('\n')[0]).strip(' «»"\'')
     if not rewritten or len(rewritten) > 2 * len(question) + 300:
         return question
-    asked = {_tok(t) for t in CLAIM_TOKENS.findall(question + ' ' + ' '.join(h['question'] for h in history))}
+    asked = {_tok(t) for t in CLAIM_TOKENS.findall(question + ' ' + ' '.join(
+        h['question'] + ' ' + (h.get('standalone') or '') for h in history))}
     if any(_tok(t) not in asked for t in CLAIM_TOKENS.findall(rewritten)):
         return question
+    # The model kept the question as it was, or left it without a subject («А в пятницу?»,
+    # «А за три дня?»): the previous question, as understood, goes in front of it, so that
+    # retrieval and the answer see what it refers to.
+    if _bare(rewritten) == _bare(question) or not question_terms(rewritten):
+        previous = (history[-1].get('standalone') or history[-1]['question']).strip()
+        return previous + ' ' + question.strip()
     return rewritten
+
+
+def _bare(text):
+    return re.sub(r'[^\w]+', ' ', text.lower().replace('ё', 'е')).strip()
 
 
 def answer(db, question, when=None, deadline=None):

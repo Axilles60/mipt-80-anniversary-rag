@@ -131,6 +131,8 @@ a.doc:hover{text-decoration:underline}
 .quote blockquote{margin:.3rem 0 0;padding:.1rem 0 .1rem .8rem;border-left:3px solid var(--line-strong);white-space:pre-line}
 .doclinks{font-size:.9rem;margin:.2rem 0 .8rem}
 .doc-meta .orig{margin-left:.4rem}
+.as form.again{display:inline;margin-left:.6rem}
+.as form.again button{min-height:0;padding:0;font-size:.8125rem}
 '''
 STYLE = '<style>' + re.sub(r'\s*\n\s*', '', CSS.strip()) + '</style>'
 
@@ -508,6 +510,33 @@ def render_documents(docs):
     return content + '</ol>'
 
 
+def understood(turn, by_n):
+    """«Понял вопрос как …» under a follow-up: what it was taken to mean, which earlier question
+    it was tied to (a link), the date carried over, and a way to ask it as a new question."""
+    relation = turn.get('relation') or 'new'
+    if not relation.startswith('follow'):
+        return ''
+    number = turn.get('ref')
+    ref = by_n.get(number)
+    to = f'<a href="#t{number}">вопросу {number}</a>' if ref else 'предыдущему вопросу'
+    if relation.startswith('follow-joined'):
+        earlier = (ref or {}).get('standalone') or (ref or {}).get('question') or ''
+        line = 'Понял как уточнение к ' + to + (' «' + esc(earlier) + '»' if earlier else '')
+    elif turn['standalone'] != turn['question']:
+        line = 'Понял вопрос как: «' + esc(turn['standalone']) + '» — уточнение к ' + to
+    else:
+        line = 'Понял как уточнение к ' + to
+    if relation.endswith('+date') and turn.get('asked_on'):
+        day = turn['asked_on']
+        if re.fullmatch(r'\d{4}-\d{2}-\d{2}', day):
+            day = '.'.join(reversed(day.split('-')))
+        line += '; на дату ' + esc(day) + ', как в нём'
+    again = ('<form method="post" action="/ask" class="again"><input type="hidden" name="question" value="'
+             + esc(turn['question']) + '"><input type="hidden" name="fresh" value="1">'
+             '<button class="secondary">Это новый вопрос</button></form>')
+    return '<div class="as">' + line + '.' + again + '</div>'
+
+
 BACK = '<p class="back"><a href="/">Вернуться к вопросам</a></p>'
 
 
@@ -597,10 +626,10 @@ class Handler(BaseHTTPRequestHandler):
         else:
             content += ('<div class="tools"><form method="post" action="/new"><button class="secondary">Новый диалог</button></form>'
                         '<form method="post" action="/clear"><button class="secondary">Очистить историю</button></form></div>')
+        by_n = {t['n']: t for t in turns}
         for t in turns:
             content += f'<section class="turn" id="t{t["n"]}"><div class="q">{esc(t["question"])}</div>'
-            if t['standalone'] != t['question']:
-                content += f'<div class="as">Понял вопрос как: {esc(t["standalone"])}</div>'
+            content += understood(t, by_n)
             content += f'<div class="a">{t["answer_html"]}</div>'
             if 'Недостаточно данных для ответа' in t['answer_html']:
                 content += (f'<p class="after">Ответ ищется только в загруженных документах. Посмотрите '
@@ -623,17 +652,31 @@ class Handler(BaseHTTPRequestHandler):
         """One dialogue turn: rewrite a follow-up into a self-contained question, answer it as
         a single question (same pipeline and checks), keep the turn, show the dialogue."""
         question = fields.get('question', [''])[0]
+        asked_on = fields.get('date', [''])[0] or None
         from . import rag
         try:
             with closing(connect(DB)) as db, db:
-                turns = history.turns(db, conversation, limit=3)
+                turns = history.session(db, conversation)
         except (sqlite3.Error, OSError):
             turns = []
-        model = rag.llm() if rag.enabled() and turns else None
-        standalone = rag.condense(model, turns, question) if model else question
+        # How the question relates to the dialogue is decided by code (history.relation);
+        # only a question that refers back is rewritten by the model.
+        # «Это новый вопрос» (fresh=1): the person said the question does not refer to the dialogue.
+        relation = 'new' if fields.get('fresh', [''])[0] == '1' else history.relation(question, turns)
+        standalone, ref = question, None
+        if relation == 'follow':
+            ref = turns[-1]['n']
+            model = rag.llm() if rag.enabled() else None
+            standalone = rag.condense(model, turns, question) if model else question
+            previous = turns[-1].get('standalone') or turns[-1]['question']
+            if standalone != question and standalone.startswith(previous.strip() + ' '):
+                relation = 'follow-joined'   # the model did not rewrite it: the previous question went in front
+            if not asked_on and turns[-1].get('asked_on') and not history.NOW.search(question):
+                # «А раньше?» after a question on 01.06.2024: the date carries over.
+                asked_on, relation = turns[-1]['asked_on'], relation + '+date'
         self.captured = []
         try:
-            self.answer_post(dict(fields, question=[standalone]))
+            self.answer_post(dict(fields, question=[standalone], date=[asked_on or '']))
         finally:
             captured, self.captured = self.captured, None
         content, status = captured[-1] if captured else ('<p>Технический сбой. Повторите попытку.</p>', 503)
@@ -642,7 +685,7 @@ class Handler(BaseHTTPRequestHandler):
         if status < 500:
             with closing(connect(DB)) as db, db:
                 n = history.add(db, conversation, question, standalone, history.plain(answer), answer,
-                                fields.get('date', [''])[0] or None)
+                                asked_on, relation, ref)
             return self.redirect(f'/#t{n}')
         return self.page(self.form(chat=True) + answer, status)
 
