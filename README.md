@@ -91,6 +91,38 @@ done
 
 Сравнение BM25 / dense / hybrid на вымышленном корпусе (`fixtures/hybrid`: настроечные `tuning`, `holdout`, `holdout2` и отложенный `holdout3`): `python eval/measure_hybrid.py --split holdout3 --report eval/hybrid_results/<новый файл>.json`. Сводно по четырём наборам (76 вопросов) гибрид против BM25: верных ответов 40→46, ложных 17→11, пропусков 10→8, правильных отказов 9/20→11/20, время ответа 0.02→0.13 с; ни на одном наборе не хуже. Чистый dense даёт меньше всего ложных ответов (5), но больше пропусков. Таблицы, разбор по вопросам и ограничения: [журнал качества, итерации 5–7](sdd/quality-progress.md). Полный набор тестов в гибриде: `NAVIGATOR_RETRIEVAL=hybrid python -m unittest discover -s tests`. Порог откалиброван на синтетике; на реальном корпусе гибрид не проверен, поэтому он не включён по умолчанию.
 
+### Ответ генератором (RAG, необязательно, локально)
+
+`NAVIGATOR_PIPELINE=rag` включает конвейер RAG (`app/rag.py`):
+- поиск чанков (`NAVIGATOR_RERANK=1` — переупорядочивание локальным cross-encoder);
+- контекст;
+- локальный `Qwen2.5-3B-Instruct` Q4_K_M в llama.cpp с ответом по JSON-схеме;
+- проверка каждого утверждения кодом по процитированному тексту;
+- при сбое — извлекающий ответ.
+
+Модели скачиваются один раз:
+- `data/models/qwen2.5-3b-instruct/qwen2.5-3b-instruct-q4_k_m.gguf`;
+- `python tools/fetch_model.py reranker`.
+
+Два способа запуска генератора:
+- **CPU, в процессе** (как в образе): `pip install llama-cpp-python`. Ответ — около 20 с.
+- **GPU, локальный `llama-server`** (для разработки и оценки). Ответ — около 1 с на RTX-классе. Нужна официальная сборка llama.cpp с CUDA для Windows (`llama-bXXXX-bin-win-cuda-13.x-x64.zip` и `cudart-…zip` с github.com/ggml-org/llama.cpp, сверить SHA-256 со страницы выпуска):
+
+  ```sh
+  llama-server -m data/models/qwen2.5-3b-instruct/qwen2.5-3b-instruct-q4_k_m.gguf -ngl 99 -c 16384 -np 4 --host 127.0.0.1 --port 8081
+  NAVIGATOR_PIPELINE=rag NAVIGATOR_LLM_URL=http://127.0.0.1:8081 python -m app
+  ```
+
+  Адрес принимается только локальный (127.0.0.1/localhost): тексты не покидают машину.
+
+Оценка на золотом наборе (`fixtures/rag`, 16 вымышленных документов, tuning 176 и holdout 160 вопросов; разметка проверяется `python eval/check_gold.py`):
+
+```sh
+python eval/measure_rag.py --split tuning --quick --config "rag=NAVIGATOR_PIPELINE=rag;NAVIGATOR_RETRIEVAL=hybrid;NAVIGATOR_LLM_URL=http://127.0.0.1:8081" --report eval/rag_results/<новый файл>.json
+```
+
+`--quick` берёт треть вопросов каждого типа (67 вопросов, около 1.5 мин на GPU) для итераций. Полный tuning — около 4 мин на GPU. Holdout прогоняется один раз на кандидата.
+
 ## Проверка нового документа без внешней сети
 
 После сборки выполнить `docker run --rm --network none --entrypoint python employee-navigator:mvp /app/eval/offline_probe.py --mode extractive`. Команда создаёт синтетический DOCX и новую временную базу, импортирует документ, задаёт вопрос через веб и открывает ссылки. Сетевое пространство контейнера ограничено loopback; зависимости уже должны быть в образе. Метрики относятся к одному вымышленному вопросу.

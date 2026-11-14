@@ -1,8 +1,9 @@
 """RAG answer: retrieve chunks, give them to a local LLM, verify every claim (stage R5).
 
 Enabled by NAVIGATOR_PIPELINE=rag. The model is a local GGUF file run by
-llama.cpp (NAVIGATOR_LLM, default data/models/qwen2.5-3b-instruct/…q4_k_m.gguf);
-nothing leaves the machine. The answer is generated as JSON constrained by a
+llama.cpp (NAVIGATOR_LLM, default data/models/qwen2.5-3b-instruct/…q4_k_m.gguf)
+inside this process, or by a llama-server on this machine (NAVIGATOR_LLM_URL,
+loopback only — e.g. the same model on the GPU); nothing leaves the machine. The answer is generated as JSON constrained by a
 schema (llama.cpp grammar), then every statement is checked by code against
 the chunks it cites: cited numbers must exist in the context; numbers, times,
 form codes, e-mail addresses and URLs of the statement must occur in the cited
@@ -66,15 +67,56 @@ def model_file():
     return Path(os.environ.get('NAVIGATOR_LLM') or DEFAULT_LLM)
 
 
+class LocalModel:
+    """llama.cpp inside this process (llama-cpp-python; CPU in the Docker image)."""
+    def __init__(self, path):
+        from llama_cpp import Llama
+        self.model = Llama(model_path=str(path), n_ctx=4096, n_threads=os.cpu_count() or 4, verbose=False)
+
+    def complete(self, messages):
+        with _lock:
+            out = self.model.create_chat_completion(
+                messages=messages, response_format={'type': 'json_object', 'schema': SCHEMA},
+                temperature=0, max_tokens=MAX_ANSWER_TOKENS)
+        return out['choices'][0]['message']['content']
+
+
+class ServerModel:
+    """A llama.cpp server (llama-server) on this machine, e.g. on the GPU.
+
+    Only loopback addresses are accepted: document text never leaves the machine.
+    """
+    def __init__(self, url):
+        from urllib.parse import urlsplit
+        host = urlsplit(url).hostname or ''
+        if host not in ('127.0.0.1', 'localhost', '::1'):
+            raise ValueError('NAVIGATOR_LLM_URL must point to this machine (127.0.0.1/localhost)')
+        self.url = url.rstrip('/') + '/v1/chat/completions'
+
+    def complete(self, messages):
+        from urllib.request import Request, urlopen
+        body = json.dumps({'messages': messages, 'temperature': 0, 'max_tokens': MAX_ANSWER_TOKENS,
+                           'response_format': {'type': 'json_schema',
+                                               'json_schema': {'name': 'answer', 'schema': SCHEMA}}}).encode()
+        request = Request(self.url, data=body, headers={'Content-Type': 'application/json'})
+        with urlopen(request, timeout=300) as response:
+            out = json.loads(response.read().decode('utf-8'))
+        return out['choices'][0]['message']['content']
+
+
 @lru_cache(maxsize=1)
 def llm():
-    """The local model, loaded once; None if it or llama.cpp is unavailable."""
-    path = model_file()
-    if not path.is_file():
-        return None
+    """The generator, set up once; None if it is unavailable.
+
+    NAVIGATOR_LLM_URL — a local llama-server (GPU); otherwise the GGUF file in
+    this process (NAVIGATOR_LLM).
+    """
+    url = os.environ.get('NAVIGATOR_LLM_URL', '').strip()
     try:
-        from llama_cpp import Llama
-        return Llama(model_path=str(path), n_ctx=4096, n_threads=os.cpu_count() or 4, verbose=False)
+        if url:
+            return ServerModel(url)
+        path = model_file()
+        return LocalModel(path) if path.is_file() else None
     except Exception:
         return None
 
@@ -181,14 +223,10 @@ def answer(db, question, when=None, deadline=None):
     if not chunks:
         content = {'status': 'insufficient', 'short_answer': '', 'items': [], 'missing': []}
     else:
-        with _lock:
-            out = model.create_chat_completion(
-                messages=[{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt(question, chunks, headers, when)}],
-                response_format={'type': 'json_object', 'schema': SCHEMA},
-                temperature=0, max_tokens=MAX_ANSWER_TOKENS)
+        messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt(question, chunks, headers, when)}]
         try:
-            content = json.loads(out['choices'][0]['message']['content'])
-        except (ValueError, KeyError, IndexError):
+            content = json.loads(model.complete(messages))
+        except (OSError, ValueError, KeyError, IndexError):   # server down, broken JSON: extractive fallback
             return None
     status = content.get('status')
     kept, dropped, short = verify(content, chunks)

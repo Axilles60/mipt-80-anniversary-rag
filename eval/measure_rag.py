@@ -238,6 +238,16 @@ def viewer(report):
             '.bad{background:#fff1f0}</style><h1>Оценка конвейеров (синтетика)</h1>' + ''.join(rows))
 
 
+def quick(cases):
+    """Deterministic stratified subset: the 1st, 4th, 7th… question of every type."""
+    seen = {}
+    out = []
+    for c in cases:
+        n = seen.get(c['type'], 0); seen[c['type']] = n + 1
+        if n % 3 == 0: out.append(c)
+    return out
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--split', choices=['tuning', 'holdout'], required=True)
@@ -245,12 +255,15 @@ def main():
     p.add_argument('--report', required=True)
     p.add_argument('--only', help='comma-separated question IDs')
     p.add_argument('--retrieval-only', action='store_true', help='ranking metrics only, no answers (fast A/B of search)')
+    p.add_argument('--quick', action='store_true',
+                   help='every 3rd question of each type (about a third of the set, all types kept) for fast iterations')
     args = p.parse_args()
     report_path = Path(args.report)
     if report_path.exists() or report_path.with_suffix('.html').exists():
         raise SystemExit('report exists: ' + args.report)
     cases = json.loads((FIXTURES / (args.split + '.json')).read_text(encoding='utf-8'))
     if args.only: cases = [c for c in cases if c['id'] in set(args.only.split(','))]
+    if args.quick: cases = quick(cases)
     configs = {}
     for spec in args.config or ['base=']:
         name, _, rest = spec.partition('=')
@@ -260,12 +273,12 @@ def main():
         paths, needles = build(root)
         db_path = root / 'db'
         env = dict(os.environ, NAVIGATOR_DB=str(db_path), HOST='127.0.0.1')
-        for key in ('NAVIGATOR_MODEL', 'NAVIGATOR_RETRIEVAL', 'NAVIGATOR_PIPELINE', 'NAVIGATOR_IMPORT_DIR', 'NAVIGATOR_RERANK'): env.pop(key, None)
+        for key in ('NAVIGATOR_MODEL', 'NAVIGATOR_RETRIEVAL', 'NAVIGATOR_PIPELINE', 'NAVIGATOR_IMPORT_DIR', 'NAVIGATOR_RERANK', 'NAVIGATOR_LLM_URL'): env.pop(key, None)
         subprocess.run([sys.executable, '-m', 'app', 'import', *paths, '--manifest', str(manifest)],
                        env=env, cwd=ROOT, check=True, capture_output=True)
         from app.core import connect
         from app import retrieval
-        report = {'split': args.split, 'data': 'synthetic', 'configs': {}}
+        report = {'split': args.split, 'quick': args.quick, 'questions': [c['id'] for c in cases], 'data': 'synthetic', 'configs': {}}
         for name, flags in configs.items():
             saved = {k: os.environ.get(k) for k in flags}
             os.environ.update(flags); os.environ['NAVIGATOR_DB'] = str(db_path)
