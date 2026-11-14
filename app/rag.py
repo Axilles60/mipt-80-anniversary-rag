@@ -86,7 +86,7 @@ class LocalModel:
     """llama.cpp inside this process (llama-cpp-python; CPU in the Docker image)."""
     def __init__(self, path):
         from llama_cpp import Llama
-        self.model = Llama(model_path=str(path), n_ctx=4096, n_threads=os.cpu_count() or 4, verbose=False)
+        self.model = Llama(model_path=str(path), n_ctx=16384, n_threads=os.cpu_count() or 4, verbose=False)
 
     def complete(self, messages, schema=None, max_tokens=MAX_ANSWER_TOKENS):
         with _lock:
