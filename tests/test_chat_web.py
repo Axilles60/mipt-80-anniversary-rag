@@ -175,9 +175,89 @@ class ChatWebTest(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertIn('Документы в базе', page)
                 self.assertIn('support.pdf', page)
-                self.assertIn('href="/fragment?id=', page)
+                self.assertIn('href="/document?source=', page)     # the whole document, not its first fragment
             finally:
                 server.terminate(); server.wait(timeout=10)
+
+
+class SourceDocumentTest(unittest.TestCase):
+    """The original documents: the whole text in reading order and the file as imported."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        root = Path(cls.tmp.name)
+        cls.pdf = write_pdf(root / 'support.pdf', SUPPORT_PAGES)
+        from app.importer import batch
+        cls.db_path = root / 'db.sqlite3'
+        batch(str(cls.db_path), [str(cls.pdf)])
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def db(self):
+        db = sqlite3.connect(self.db_path); db.row_factory = sqlite3.Row
+        return db
+
+    def test_answer_order_answer_quotes_sources(self):
+        from app.__main__ import render_rag
+        with closing(self.db()) as db:
+            from app import chunking
+            chunking.ensure(db)
+            chunk = dict(db.execute("SELECT * FROM chunks WHERE level=2 AND text LIKE '%portal.example.invalid%'").fetchone())
+            chunk['meta'] = json.loads(chunk['meta'] or '{}')
+            items = [{'text': 'Обращение подаётся через портал.', 'chunks': [chunk]},
+                     {'text': 'В обращении указывают инвентарный номер.', 'chunks': [chunk]}]
+            result = {'status': 'answer', 'short_answer': '', 'items': items,
+                      'dropped': [], 'missing': [], 'headers': {(chunk['source_id'], chunk['version']): 'Регламент · support.pdf'}}
+            html_ = render_rag(db, result, None, 'Куда подать обращение?')
+            steps = render_rag(db, result, None, 'Как подать обращение?')
+        # Not a numbered list unless the question asks what to do, step by step.
+        self.assertNotIn('<ol', html_[:html_.index('class="quotes"')])
+        self.assertIn('<p>Обращение подаётся через портал.', html_)
+        self.assertIn('<ol class="steps"><li>Обращение подаётся через портал.', steps)
+        answer, quotes, sources = html_.index('Ответ</h2>'), html_.index('class="quotes"'), html_.index('<h2>Источники')
+        self.assertLess(answer, quotes)
+        self.assertLess(quotes, sources)
+        self.assertIn('/document?source=', html_)
+        # Quotes are blocks, not statements of the answer: no <p>/<li> inside them.
+        block = html_[quotes:sources]
+        self.assertNotIn('<li>', block); self.assertNotIn('<p>', block)
+
+    def test_document_page_and_original_file(self):
+        import threading
+        from http.server import HTTPServer
+        import app.__main__ as web
+        web.DB = str(self.db_path)
+        server = HTTPServer(('127.0.0.1', 0), web.Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.shutdown)
+        with closing(self.db()) as db:
+            row = db.execute('SELECT source_id, version FROM imports').fetchone()
+            first = db.execute('SELECT id FROM import_fragments ORDER BY rowid LIMIT 1').fetchone()[0]
+            count = db.execute('SELECT COUNT(*) FROM import_fragments').fetchone()[0]
+        from urllib.parse import quote
+        conn = http.client.HTTPConnection('127.0.0.1', server.server_port, timeout=30)
+        conn.request('GET', f'/document?source={quote(row[0])}&version={quote(row[1])}&at={quote(first)}')
+        r = conn.getresponse(); page = r.read().decode('utf-8')
+        self.assertEqual(r.status, 200)
+        self.assertEqual(page.count('<strong title='), count)          # every fragment, in order
+        self.assertIn('id="selected"', page)
+        self.assertIn('/original?source=', page)
+        conn.request('GET', f'/original?source={quote(row[0])}&version={quote(row[1])}')
+        r = conn.getresponse(); data = r.read()
+        self.assertEqual(r.status, 200)
+        self.assertEqual(r.getheader('Content-Type'), 'application/pdf')
+        self.assertIn("filename*=UTF-8''support.pdf", r.getheader('Content-Disposition'))
+        self.assertEqual(data, Path(self.pdf).read_bytes())
+        conn.request('GET', '/original?source=nope&version=nope')
+        r = conn.getresponse(); r.read()
+        self.assertEqual(r.status, 404)
+        conn.request('GET', '/documents')
+        r = conn.getresponse(); page = r.read().decode('utf-8')
+        self.assertIn('/document?source=', page)
+        self.assertIn('исходный файл (PDF', page)
 
 
 if __name__ == '__main__':

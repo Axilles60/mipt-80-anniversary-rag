@@ -125,6 +125,12 @@ a.doc:hover{text-decoration:underline}
  .q,.as{max-width:94%}
  .a{font-size:1rem}
 }
+.quotes{margin:.25rem 0 1rem}
+.quote{padding:.6rem 0;border-top:1px solid var(--line)}
+.quote-ref{font-size:.8rem;color:var(--muted)}
+.quote blockquote{margin:.3rem 0 0;padding:.1rem 0 .1rem .8rem;border-left:3px solid var(--line-strong);white-space:pre-line}
+.doclinks{font-size:.9rem;margin:.2rem 0 .8rem}
+.doc-meta .orig{margin-left:.4rem}
 '''
 STYLE = '<style>' + re.sub(r'\s*\n\s*', '', CSS.strip()) + '</style>'
 
@@ -260,6 +266,34 @@ def fragment_href(fragment_id, item=None):
         href += '&amp;at=' + str(item['start']) + '-' + str(item['end'])
     return href
 
+def document_href(source_id, version=None, fragment_id=None):
+    """The whole imported document (its text in reading order), optionally at one fragment."""
+    href = '/document?source=' + quote(source_id, safe='')
+    if version:
+        href += '&amp;version=' + quote(version, safe='')
+    if fragment_id:
+        href += '&amp;at=' + quote(fragment_id, safe='') + '#selected'
+    return href
+
+def original_href(source_id, version):
+    return '/original?source=' + quote(source_id, safe='') + '&amp;version=' + quote(version, safe='')
+
+# Original files are served as they were imported: PDF opens in the browser, the rest downloads.
+ORIGINAL_TYPES = {'.pdf': ('application/pdf', 'inline', 'PDF'),
+                  '.docx': ('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'attachment', 'DOCX'),
+                  '.xlsx': ('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'attachment', 'XLSX')}
+
+def document_links(db, source_id, version):
+    """«Весь документ · Исходный файл (PDF, 120 КБ)» for an imported version."""
+    row = db.execute('SELECT filename, length(original) AS size FROM imports WHERE source_id=? AND version=?',
+                     (source_id, version)).fetchone()
+    links = ['<a href="' + document_href(source_id, version) + '">Весь документ</a>']
+    if row is not None and row['size']:
+        kind = ORIGINAL_TYPES.get(os.path.splitext(row['filename'] or '')[1].lower(), (None, None, 'файл'))[2]
+        size = max(1, round(row['size'] / 1024))
+        links.append('<a href="' + original_href(source_id, version) + '">Исходный файл (' + kind + ', ' + str(size) + ' КБ)</a>')
+    return '<p class="doclinks">' + ' · '.join(links) + '</p>'
+
 def cite(fragment_id, item=None):
     return ' <a href="' + fragment_href(fragment_id, item) + '">' + esc(fragment_id) + '</a>'
 
@@ -331,8 +365,17 @@ def render_support(support, import_meta, source_notes):
         content += '<p>Ограничение: ' + esc(note) + ' <a href="/fragment?id=' + quote(fid, safe='') + '">' + esc(fid) + '</a></p>'
     return content
 
-def render_rag(db, result, when):
-    """HTML of a verified RAG answer; every statement links to its chunk address."""
+# A question about what to do, in what order: its answer is a numbered list of steps.
+PROCEDURE = re.compile(r'\bкак\s+(?:мне\s+)?(?:оформ|получ|пода|подключ|заказ|заброн|сда|восстанов|согласов|сдела|отправ|зарегистр|попаст|обрат)'
+                       r'|\bчто\s+(?:мне\s+)?(?:нужно|надо|необходимо|следует)\s+(?:с)?делать|\bчто\s+делать|\bпоряд(?:ок|ке)\b'
+                       r'|\bшаг|\bпоследовательност|\bпроцедур|\bалгоритм', re.I)
+
+
+def render_rag(db, result, when, question=''):
+    """HTML of a verified RAG answer; every statement links to its chunk address.
+
+    The statements are a numbered list only when they are steps the employee takes (a question
+    about how to do something); otherwise they read as text, one paragraph per statement."""
     status = result['status']
     if status == 'off_topic':
         return ('<p>Вопрос не относится к внутренним документам и регламентам организации; '
@@ -342,7 +385,8 @@ def render_rag(db, result, when):
     content = '<h2>Ответ</h2>'
     if result['short_answer'] and not (len(result['items']) == 1 and result['short_answer'].strip(' .') == result['items'][0]['text'].strip(' .')):
         content += '<h3>' + esc(result['short_answer']) + '</h3>'
-    content += '<ol>'
+    steps = bool(PROCEDURE.search(question or '')) and len(result['items']) > 1
+    content += '<ol class="steps">' if steps else '<div class="answer-text">'
     def links(chunk):
         # A sheet row is several cell fragments: cite every cell, not only the first.
         cells = (chunk.get('meta') or {}).get('cells')
@@ -352,28 +396,43 @@ def render_rag(db, result, when):
     for item in result['items']:
         # A false premise of the question: the document's own sentence, quoted (rag.premise_corrections).
         text = ('Поправка к вопросу. В документе: «' + item['text'] + '»') if item.get('premise') else item['text']
-        content += '<li>' + esc(text) + ''.join(links(c) for c in item['chunks']) + '</li>'
-    content += '</ol>'
+        tag = 'li' if steps else 'p'
+        content += '<' + tag + '>' + esc(text) + ''.join(links(c) for c in item['chunks']) + '</' + tag + '>'
+    content += '</ol>' if steps else '</div>'
     # The model fills "missing" with noise on full answers: a gap is shown only
     # when it declared the answer partial.
     if status == 'partial':
         # rag.gaps keeps only a short naming of each gap; with none left the line stays generic.
         content += ('<p>Недостаточно данных для части вопроса' + (': ' + esc('; '.join(result['missing'])) if result['missing'] else '')
                     + '.</p>')
-    if result['dropped']:
-        content += ('<p>Самопроверка: ' + str(len(result['dropped'])) + ' утвержд. модели не подтверждены текстом '
-                    'источников и не показаны.</p>')
+    # Then the fragments the answer rests on, verbatim — what a reader checks the answer against.
+    # Blocks, not <p>/<li>: they are quotes of the documents, not statements of the answer.
+    chunks = list({c['id']: c for item in result['items'] for c in item['chunks']}.values())
+    if chunks:
+        content += '<h2>Фрагменты документов, на которых основан ответ</h2><div class="quotes">'
+        for c in chunks:
+            text = c['text'] if len(c['text']) <= 900 else c['text'][:900].rsplit(' ', 1)[0] + ' …'
+            content += ('<div class="quote"><div class="quote-ref">' + links(c).strip()
+                        + ' · <a class="doclink" href="' + document_href(c['source_id'], c['version'], c['fragment_id']) + '">в документе</a>'
+                        + '</div><blockquote>' + esc(text) + '</blockquote></div>')
+        content += '</div>'
+    # Last: where it comes from, what limits it, how it was checked.
+    content += '<h2>Источники и ограничения</h2>'
     keys = list(dict.fromkeys((c['source_id'], c['version']) for item in result['items'] for c in item['chunks']))
     for key in keys:
         if result['headers'].get(key):
             # The heading also carries a hint for the model («…: действующий текст изменённых пунктов —
             # во фрагментах этого приказа»); a reader needs only «изменён приказом № … с …».
             shown = re.sub(r'(изменён приказом[^:·]*):[^·]*', r'\1', result['headers'][key])
-            content += '<p>Источник: ' + esc(shown) + '.</p>'
+            content += ('<p>Источник: ' + esc(shown) + '. <a class="doclink" href="' + document_href(*key)
+                        + '">Открыть документ</a></p>')
     from .requisites import status as version_status
     for _, (state, notes) in version_status(db, keys, when).items():
         for note, fid in notes:
             content += '<p>Ограничение: ' + esc(note) + (cite(fid) if fid else '') + '</p>'
+    if result['dropped']:
+        content += ('<p>Самопроверка: ' + str(len(result['dropped'])) + ' утвержд. модели не подтверждены текстом '
+                    'источников и не показаны.</p>')
     content += ('<p>Применимость и полнота проверены по тексту найденных документов; ответ сформирован локальной '
                 'моделью и проверен по цитатам; сверьте источник.</p>')
     return content
@@ -414,7 +473,9 @@ def imported_documents(db):
     docs = []
     for row in db.execute(LATEST_IMPORTS).fetchall():
         info = document_info(db, row['source_id'], row['version'])
-        docs.append(dict(info, fragment=info['first']))
+        size = db.execute('SELECT length(original) FROM imports WHERE source_id=? AND version=?',
+                          (row['source_id'], row['version'])).fetchone()[0]
+        docs.append(dict(info, fragment=info['first'], source_id=row['source_id'], version=row['version'], size=size))
     return sorted(docs, key=lambda d: d['title'].casefold())
 
 def source_heading(db, row, at=None):
@@ -425,18 +486,25 @@ def source_heading(db, row, at=None):
     meta = [info['label'], info['filename'] if info['filename'] != info['title'] else None,
             'выбран: ' + ref_label('#' + row['locator'], row['text'], unit, cell=True)]
     return ('<h2>' + esc(info['title']) + '</h2><p class="ver" data-version="' + esc(row['version']) + '" data-locator="'
-            + esc(row['locator']) + '">' + esc(' · '.join(x for x in meta if x)) + '</p>')
+            + esc(row['locator']) + '">' + esc(' · '.join(x for x in meta if x)) + '</p>'
+            + document_links(db, row['source_id'], row['version']))
 
 def render_documents(docs):
     content = '<h2>Документы в базе</h2>'
     if not docs:
         return content + '<p>Документы ещё не загружены.</p>'
     content += ('<p class="lead">Навигатор ищет ответы только в этих документах (' + str(len(docs)) + '). '
-                'Ссылка открывает начало документа.</p><ol class="docs">')
+                'Название открывает текст документа целиком; исходный файл — в том виде, в каком он загружен.</p><ol class="docs">')
     for d in docs:
         meta = [d['label'], d['filename'] if d['filename'] != d['title'] else None]
-        content += ('<li><a class="doc" href="' + fragment_href(d['fragment']) + '">' + esc(d['title']) + '</a>'
-                    + ('<span class="doc-meta">' + esc(' · '.join(x for x in meta if x)) + '</span>' if any(meta) else '') + '</li>')
+        original = ''
+        if d.get('size'):
+            kind = ORIGINAL_TYPES.get(os.path.splitext(d['filename'] or '')[1].lower(), (None, None, 'файл'))[2]
+            original = (' <a class="orig" href="' + original_href(d['source_id'], d['version']) + '">исходный файл ('
+                        + kind + ', ' + str(max(1, round(d['size'] / 1024))) + ' КБ)</a>')
+        content += ('<li><a class="doc" href="' + document_href(d['source_id'], d['version']) + '">' + esc(d['title']) + '</a>'
+                    + ('<span class="doc-meta">' + esc(' · '.join(x for x in meta if x)) + original + '</span>'
+                       if any(meta) or original else '') + '</li>')
     return content + '</ol>'
 
 
@@ -578,6 +646,38 @@ class Handler(BaseHTTPRequestHandler):
             return self.redirect(f'/#t{n}')
         return self.page(self.form(chat=True) + answer, status)
 
+    def document_page(self, db, row, at=''):
+        """The whole imported document in reading order: every page, paragraph or table row,
+        labelled as in citations; the fragment «at» is highlighted and scrolled to."""
+        info = document_info(db, row['source_id'], row['version'])
+        meta = [info['label'], info['filename'] if info['filename'] != info['title'] else None]
+        content = ('<h2>' + esc(info['title']) + '</h2><p class="ver" data-version="' + esc(row['version']) + '">'
+                   + esc(' · '.join(x for x in meta if x)) + '</p>' + document_links(db, row['source_id'], row['version']))
+        fragments = db.execute('SELECT * FROM import_fragments WHERE source_id=? AND version=? ORDER BY rowid',
+                               (row['source_id'], row['version'])).fetchall()
+        if not fragments:
+            content += '<p>Текст документа не извлечён; откройте исходный файл.</p>'
+        content += ''.join(render_import_fragment(r, r['id'] == at) for r in fragments)
+        return self.fragment_page(content)
+
+    def original(self, db, row):
+        """The original file, byte for byte as imported (stored in the base)."""
+        data = db.execute('SELECT original FROM imports WHERE source_id=? AND version=?',
+                          (row['source_id'], row['version'])).fetchone()['original']
+        if not data:
+            return self.page('<p>Исходный файл не сохранён.</p>' + BACK, 404)
+        name = (row['filename'] or 'document').replace('\\', '/').rsplit('/', 1)[-1]
+        kind, disposition, _ = ORIGINAL_TYPES.get(os.path.splitext(name)[1].lower(), ('application/octet-stream', 'attachment', ''))
+        fallback = re.sub(r'[^A-Za-z0-9._-]', '_', name)
+        self.send_response(200)
+        self.send_header('Content-Type', kind)
+        self.send_header('Content-Disposition', f"{disposition}; filename=\"{fallback}\"; filename*=UTF-8''{quote(name, safe='')}")
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Cache-Control', 'private, max-age=3600')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(bytes(data))
+
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == '/':
@@ -591,6 +691,27 @@ class Handler(BaseHTTPRequestHandler):
             except (sqlite3.Error, OSError):
                 docs = []
             return self.page(BACK + render_documents(docs), kind='docs', title='Документы в базе')
+        if parsed.path in ('/document', '/original'):
+            query = parse_qs(parsed.query)
+            source_id = query.get('source', [''])[0]
+            version = query.get('version', [''])[0]
+            try:
+                with closing(connect_existing(DB)) as db, db:
+                    if not has_imports(db):
+                        return self.page('<p>Документ не найден.</p>' + BACK, 404)
+                    if version:
+                        row = db.execute('SELECT source_id, version, filename FROM imports WHERE source_id=? AND version=?',
+                                         (source_id, version)).fetchone()
+                    else:     # the latest imported version
+                        row = db.execute('SELECT source_id, version, filename FROM imports WHERE source_id=? '
+                                         'ORDER BY rowid DESC LIMIT 1', (source_id,)).fetchone()
+                    if row is None:
+                        return self.page('<p>Документ не найден.</p>' + BACK, 404)
+                    if parsed.path == '/original':
+                        return self.original(db, row)
+                    return self.document_page(db, row, query.get('at', [''])[0])
+            except (sqlite3.Error, OSError):
+                return self.page('<p>Технический сбой при открытии документа. Повторите попытку.</p>' + BACK, 503)
         if parsed.path != '/fragment':
             return self.page('<p>Страница не найдена.</p>' + BACK, 404)
         fragment_id = parse_qs(parsed.query).get('id', [''])[0]
@@ -690,7 +811,7 @@ class Handler(BaseHTTPRequestHandler):
                         iso(rag_when)
                     rag_result = rag.answer(db, question, rag_when)
                     if rag_result is not None:
-                        return self.page(self.form(question) + render_rag(db, rag_result, rag_when))
+                        return self.page(self.form(question) + render_rag(db, rag_result, rag_when, question))
                 if 'evidence_topics' in tables and 'import_fragments' in tables:
                     from .evidence import query as evidence_query, keyword_matches
                     from .questions import split_question

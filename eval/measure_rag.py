@@ -125,7 +125,7 @@ def has_token(token, text):
     return strip(token) in {strip(t) for t in CLAIM_TOKENS.findall(text)}
 
 
-GAP = re.compile(r'Недостаточно данных для части вопроса:.*?(?=Самопроверка|Источник:|Применимость|$)', re.S)
+GAP = re.compile(r'Недостаточно данных для части вопроса:.*?(?=Фрагменты документов|Источники и ограничения|Самопроверка|Источник:|Применимость|$)', re.S)
 
 
 def without_gap(body):
