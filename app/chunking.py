@@ -272,14 +272,28 @@ def build(db, source_id, version, title=None):
         value = meta.get('cached_value') if meta.get('formula') else meta.get('value')
         header = (meta.get('column_headers') or [{}])[-1].get('text', '')
         sheet = sheets.setdefault(meta.get('sheet'), {})
-        sheet.setdefault(number, []).append((cell['id'], header, '' if value is None else str(value)))
+        column = _column_index(re.sub(r'\d+$', '', meta.get('range', '')))
+        sheet.setdefault(number, []).append((cell['id'], header, '' if value is None else str(value), column))
     for sheet_name, sheet_rows in sheets.items():
         path = {}
+        outline = _outline_sheet(sheet_rows)
+        above = {}                                  # column → (header, value) of the nearest filled cell above
         for number in sorted(sheet_rows):
             entries = sheet_rows[number]
-            if all(h == v or not h for _, h, v in entries) and number == min(sheet_rows):
+            if all(h == v or not h for _, h, v, _ in entries) and number == min(sheet_rows):
                 continue  # header row
-            pairs = [(h, v) for _, h, v in entries if v != '']
+            pairs = [(h, v) for _, h, v, _ in entries if v != '']
+            if outline and pairs:
+                # The same outline as in DOCX tables: a column left of the row's first filled
+                # cell takes the nearest filled value above it (the holder of a group of rows).
+                first = min(c for _, _, v, c in entries if v != '')
+                inherited = [above[c] for c in sorted(above) if c < first]
+                for _, h, v, c in entries:
+                    if v != '':
+                        above[c] = (h, v)
+                if first == min(above) and len(pairs) == 1:
+                    continue                        # a group row (the parent alone): its children carry it
+                pairs = inherited + pairs
             level = next((int(float(v)) for h, v in pairs if re.match(r'уров|level', h, re.I) and re.fullmatch(r'\d+(?:\.0)?', v)), None)
             name = next((v for h, v in pairs if not re.fullmatch(r'[\d.,\s-]+', v) and not re.match(r'уров|level', h, re.I)), '')
             parents = [path[l] for l in sorted(path) if level is not None and l < level]
@@ -295,7 +309,7 @@ def build(db, source_id, version, title=None):
                              'meta': {'type': 'sheet_row', 'kind': 'norm', 'sheet': sheet_name, 'row': number,
                                       'parents': parents,
                                       # every non-empty cell: a citation of the row must show all of them
-                                      'cells': [cid for cid, _, v in entries if v != '']}})
+                                      'cells': [cid for cid, _, v, _ in entries if v != '']}})
     doc_title = doc_title or ''
     out = []
     for p in sections:
@@ -316,6 +330,26 @@ def build(db, source_id, version, title=None):
                         'start': c['start'], 'end': c['end'], 'level': 2, 'parent_id': p['id'], 'ord': c['ord'],
                         'text': c['text'], 'index_text': index, 'meta': dict(c['meta'], section=p['title'], document=doc_title)})
     return out
+
+
+def _column_index(letters):
+    n = 0
+    for ch in letters.upper():
+        if 'A' <= ch <= 'Z':
+            n = n * 26 + ord(ch) - 64
+    return n
+
+
+def _outline_sheet(sheet_rows):
+    """A sheet written as an outline: in at least a third of its data rows the first column
+    of the sheet is empty while a cell to its right is filled."""
+    columns = [c for entries in sheet_rows.values() for _, _, v, c in entries if v != '']
+    if not columns:
+        return False
+    leftmost = min(columns)
+    data = [entries for number, entries in sorted(sheet_rows.items())[1:] if any(v != '' for _, _, v, _ in entries)]
+    indented = sum(1 for entries in data if min(c for _, _, v, c in entries if v != '') > leftmost)
+    return len(data) >= 6 and indented * 3 >= len(data)
 
 
 def _hierarchical_tables(rows):

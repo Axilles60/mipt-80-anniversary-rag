@@ -801,10 +801,38 @@ def _bare(text):
     return re.sub(r'[^\w]+', ' ', text.lower().replace('ё', 'е')).strip()
 
 
-def answer(db, question, when=None, deadline=None):
-    """Structured RAG answer, or None to fall back to the extractive pipeline."""
+FAILURES = {
+    'unavailable': 'Модель сейчас недоступна, поэтому ответ не сформирован.',
+    'context': 'Найденных фрагментов слишком много для модели, поэтому ответ не сформирован; попробуйте уточнить вопрос.',
+    'format': 'Модель вернула ответ в неверном формате, поэтому он не показан; повторите вопрос.',
+    'server': 'Сервер модели вернул ошибку, поэтому ответ не сформирован.',
+}
+
+
+def _failure(exc):
+    """Why the generator gave no answer: a key of FAILURES."""
+    from urllib.error import HTTPError
+    if isinstance(exc, HTTPError):
+        try:
+            body = exc.read().decode('utf-8', 'replace')
+        except OSError:
+            body = ''
+        return 'context' if 'context' in body else 'server'
+    if isinstance(exc, ValueError) and 'context' in str(exc).lower():   # llama-cpp-python in process
+        return 'context'
+    if isinstance(exc, OSError):
+        return 'unavailable'
+    return 'format'
+
+
+def answer(db, question, when=None, deadline=None, failure=None):
+    """Structured RAG answer, or None to fall back to the extractive pipeline.
+
+    On None, the reason (a key of FAILURES) is appended to `failure` if a list is given:
+    the page then says plainly that no answer was generated and why."""
     model = llm()
     if model is None:
+        if failure is not None: failure.append('unavailable')
         return None
     chunks, headers = build_context(db, question, when)
     started = time.perf_counter()
@@ -817,8 +845,17 @@ def answer(db, question, when=None, deadline=None):
     else:
         messages = [{'role': 'system', 'content': SYSTEM}, {'role': 'user', 'content': prompt(question, chunks, headers, when)}]
         try:
-            content = json.loads(model.complete(messages))
-        except (OSError, ValueError, KeyError, IndexError):   # server down, broken JSON: extractive fallback
+            try:
+                content = json.loads(model.complete(messages))
+            except (OSError, ValueError) as exc:
+                if _failure(exc) != 'context' or len(chunks) < 2:
+                    raise
+                # Too long for the model's context: once more with the better half of the fragments.
+                chunks = chunks[:len(chunks) // 2]
+                messages[1]['content'] = prompt(question, chunks, headers, when)
+                content = json.loads(model.complete(messages))
+        except (OSError, ValueError, KeyError, IndexError) as exc:   # server down, broken JSON: extractive fallback
+            if failure is not None: failure.append(_failure(exc))
             return None
     status = content.get('status')
     for c in chunks:

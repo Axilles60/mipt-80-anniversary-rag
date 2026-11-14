@@ -96,5 +96,33 @@ class OutlineTableTest(unittest.TestCase):
         self.assertIn('Учебная структура подразделений на 2030 год', row['index_text'])
 
 
+class OutlineSheetTest(unittest.TestCase):
+    """The same outline in XLSX: the holder of a row is the nearest name above it in the holder column."""
+    def test_holder_is_the_nearest_name_above(self):
+        import openpyxl
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
+            book = openpyxl.Workbook(); sheet = book.active; sheet.title = 'Структура'
+            for row in [('Ответственный', 'Уровень 1', 'Уровень 2'),
+                        ('Зайцев А.Б.', None, None),
+                        (None, '101 отдел снабжения', None),
+                        (None, '102 управление связи', '201 отдел сетей'),
+                        (None, None, '202 отдел телефонии'),
+                        ('Лисицына В.Г.', None, None),
+                        (None, '104 архив', None),
+                        (None, '105 канцелярия', None)]:
+                sheet.append(row)
+            path = Path(tmp) / 'structure.xlsx'; book.save(path)
+            db_path = Path(tmp) / 'db'
+            batch(str(db_path), [str(path)])
+            with closing(sqlite3.connect(db_path)) as db:
+                db.row_factory = sqlite3.Row
+                key = db.execute('SELECT source_id, version FROM imports').fetchone()
+                rows = [c['text'] for c in chunking.build(db, *key) if c['level'] == 2]
+        self.assertIn('Ответственный: Зайцев А.Б.; Уровень 1: 101 отдел снабжения', rows)
+        self.assertIn('Ответственный: Зайцев А.Б.; Уровень 1: 102 управление связи; Уровень 2: 202 отдел телефонии', rows)
+        self.assertIn('Ответственный: Лисицына В.Г.; Уровень 1: 105 канцелярия', rows)
+        self.assertFalse(any(r == 'Ответственный: Зайцев А.Б.' for r in rows))
+
+
 if __name__ == '__main__':
     unittest.main()

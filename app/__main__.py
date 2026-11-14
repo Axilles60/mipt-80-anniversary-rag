@@ -133,6 +133,7 @@ a.doc:hover{text-decoration:underline}
 .doc-meta .orig{margin-left:.4rem}
 .as form.again{display:inline;margin-left:.6rem}
 .as form.again button{min-height:0;padding:0;font-size:.8125rem}
+p.n-fail{padding:.6em .85em;border-radius:8px;background:var(--limit);border:1px solid var(--limit-line);font-weight:500}
 '''
 STYLE = '<style>' + re.sub(r'\s*\n\s*', '', CSS.strip()) + '</style>'
 
@@ -546,7 +547,13 @@ class Handler(BaseHTTPRequestHandler):
 
     captured = None      # a list while a dialogue turn collects its answer instead of sending it
 
+    notice = None        # «no answer was generated, because …», shown right after the question form
+
     def page(self, content, status=200, headers=(), kind='', title='Навигатор сотрудника'):
+        if self.notice:
+            note, self.notice = '<p class="n-fail">' + esc(self.notice) + '</p>', None
+            at = content.find('</form>')
+            content = content[:at + 7] + note + content[at + 7:] if at >= 0 else note + content
         if self.captured is not None:
             self.captured.append((content, status))
             return
@@ -852,9 +859,13 @@ class Handler(BaseHTTPRequestHandler):
                     if rag_when:
                         from .evidence import iso
                         iso(rag_when)
-                    rag_result = rag.answer(db, question, rag_when)
+                    failure = []
+                    rag_result = rag.answer(db, question, rag_when, failure=failure)
                     if rag_result is not None:
                         return self.page(self.form(question) + render_rag(db, rag_result, rag_when, question))
+                    # No generated answer: the page says so plainly before the fragments found.
+                    self.notice = (rag.FAILURES.get(failure[0] if failure else 'unavailable', rag.FAILURES['unavailable'])
+                                   + ' Ниже — найденные фрагменты документов без обработки моделью: проверьте их сами.')
                 if 'evidence_topics' in tables and 'import_fragments' in tables:
                     from .evidence import query as evidence_query, keyword_matches
                     from .questions import split_question
