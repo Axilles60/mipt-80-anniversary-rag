@@ -19,7 +19,7 @@ import re
 import sys
 
 FIX = Path(__file__).resolve().parents[1] / 'fixtures' / 'rag'
-SETS = ('tuning', 'holdout', 'holdout2')
+SETS = ('tuning', 'holdout', 'holdout2', 'holdout3')
 EXPECTS = {'answer', 'partial', 'insufficient', 'off_topic'}
 # The repealing order quotes the repealed order's requisites verbatim.
 KNOWN_OVERLAPS = {('PO-REQ', 'PN-2')}
