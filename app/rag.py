@@ -90,9 +90,9 @@ class LocalModel:
 
     def complete(self, messages, schema=None, max_tokens=MAX_ANSWER_TOKENS):
         with _lock:
-            out = self.model.create_chat_completion(
-                messages=messages, response_format={'type': 'json_object', 'schema': schema or SCHEMA},
-                temperature=0, max_tokens=max_tokens)
+            # schema=False: plain text (a JSON grammar lets a model loop on whitespace).
+            fmt = {} if schema is False else {'response_format': {'type': 'json_object', 'schema': schema or SCHEMA}}
+            out = self.model.create_chat_completion(messages=messages, temperature=0, max_tokens=max_tokens, **fmt)
         return out['choices'][0]['message']['content']
 
 
@@ -119,9 +119,10 @@ class ServerModel:
         from urllib.request import ProxyHandler, Request, build_opener
         # cache_prompt off: reusing a cached prefix changes the arithmetic slightly,
         # so the same question could get a different answer from run to run.
-        body = json.dumps({'messages': messages, 'temperature': 0, 'max_tokens': max_tokens, 'cache_prompt': False,
-                           'response_format': {'type': 'json_schema',
-                                               'json_schema': {'name': 'answer', 'schema': schema or SCHEMA}}}).encode()
+        payload = {'messages': messages, 'temperature': 0, 'max_tokens': max_tokens, 'cache_prompt': False}
+        if schema is not False:   # schema=False: plain text
+            payload['response_format'] = {'type': 'json_schema', 'json_schema': {'name': 'answer', 'schema': schema or SCHEMA}}
+        body = json.dumps(payload).encode()
         request = Request(self.url, data=body, headers={'Content-Type': 'application/json'})
         # No proxy from the environment (HTTP_PROXY): the request carries document text and
         # must go straight to the local server (external audit of d23f0fc).
@@ -673,9 +674,14 @@ CONDENSE_SYSTEM = (
     'Ты переписываешь последний вопрос сотрудника так, чтобы он был понятен без предыдущего диалога. '
     'Подставь из диалога только то, на что вопрос ссылается: местоимения («там», «у них», «его кабинет»), '
     'опущенный предмет («а для бухгалтерии?», «а если на 3 дня?», «а по старому приказу?»). '
-    'Не добавляй фактов, чисел и выводов из ответов, не отвечай на вопрос и не меняй его смысл. '
-    'Если вопрос и так понятен сам по себе или начинает новую тему — верни его без изменений.')
-CONDENSE_SCHEMA = {'type': 'object', 'properties': {'question': {'type': 'string'}}, 'required': ['question']}
+    'Бери из диалога только названия предметов, подразделений, документов; не добавляй чисел, сроков и выводов '
+    'из ответов, не отвечай на вопрос и не меняй его смысл. Если вопрос начинает новую тему и ни на что не '
+    'ссылается — верни его как есть. Если последний вопрос не называет предмет, о котором спрашивал предыдущий '
+    'вопрос, обязательно впиши этот предмет.\n'
+    'Пример. Диалог: «Вопрос: Кто выдаёт справки о доходах? Ответ: Справки выдаёт бухгалтерия.» '
+    'Последний вопрос: «А где она находится?» → «Где находится бухгалтерия?». '
+    '«А с телефона можно?» после вопроса о входе в портал → «Можно ли входить в портал с телефона?».\n'
+    'Ответь одной строкой — только переписанным вопросом, без кавычек и пояснений.')
 
 
 def condense(model, history, question):
@@ -690,12 +696,14 @@ def condense(model, history, question):
         return question
     dialog = '\n'.join(f'Вопрос: {h["question"]}\nОтвет: {h["answer_text"][:400]}' for h in history[-3:])
     try:
-        raw = json.loads(model.complete([{'role': 'system', 'content': CONDENSE_SYSTEM},
-                                         {'role': 'user', 'content': f'Диалог:\n{dialog}\n\nПоследний вопрос: {question}'}],
-                                        schema=CONDENSE_SCHEMA, max_tokens=160))
+        raw = model.complete([{'role': 'system', 'content': CONDENSE_SYSTEM},
+                              {'role': 'user', 'content': f'Диалог:\n{dialog}\n\nПоследний вопрос: {question}'}],
+                             schema=False, max_tokens=80)
     except (OSError, ValueError, KeyError, IndexError):
         return question
-    rewritten = re.sub(r'\s+', ' ', str(raw.get('question') or '')).strip()
+    # Plain text: a JSON grammar let the model loop on whitespace until the token limit
+    # («А где их кабинет?» came back empty). The first line, without quotes.
+    rewritten = re.sub(r'\s+', ' ', str(raw or '').strip().split('\n')[0]).strip(' «»"\'')
     if not rewritten or len(rewritten) > 2 * len(question) + 300:
         return question
     asked = {_tok(t) for t in CLAIM_TOKENS.findall(question + ' ' + ' '.join(h['question'] for h in history))}

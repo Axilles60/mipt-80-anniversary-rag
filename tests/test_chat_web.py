@@ -27,7 +27,8 @@ class FakeModel:
         self.seen.append(messages)
         if isinstance(self.reply, Exception):
             raise self.reply
-        return json.dumps({'question': self.reply}, ensure_ascii=False)
+        assert schema is False, 'the rewriting asks for plain text'
+        return '«' + self.reply + '»\n'
 
 
 TURNS = [{'question': 'Кто рассматривает заявки на закупку?', 'answer_text': 'Заявки рассматривает отдел закупок в течение 7 рабочих дней.'}]
