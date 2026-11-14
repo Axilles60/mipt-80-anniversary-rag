@@ -231,17 +231,52 @@ def prompt(question, chunks, headers, when=None):
     return '\n'.join(lines)
 
 
+def support_text(chunk):
+    """What a citation of the chunk shows a reader: its text with the document
+    title, section and parent rows (names in a statement may come from them)."""
+    meta = chunk.get('meta') or {}
+    head = ' '.join(x for x in [meta.get('document') or '', meta.get('section') or '', ' '.join(meta.get('parents') or [])] if x)
+    return (head + HEAD_END if head else '') + chunk['text']
+
+
+HEAD_END = '\x1f'   # separates the heading (names may come from it) from the cited text (numbers must)
+
+
+def names(text):
+    """Stems of the words that name something: a capitalised word that does not
+    start a sentence, with its «по …» complement («Дирекции по информационным
+    технологиям» → дирекц, информацион, технолог)."""
+    from .stemming import stem
+    words = re.findall(r'[А-ЯЁа-яё]+|[.!?:;—«»()\n]', text)
+    out = []
+    for i, w in enumerate(words):
+        start = i == 0 or words[i - 1] in '.!?:;—«»()\n'
+        if start or len(w) < 4 or not w[0].isupper() or w.isupper():
+            continue
+        out.append(stem(w.lower()))
+        if i + 1 < len(words) and words[i + 1] == 'по':
+            for v in words[i + 2:i + 5]:
+                if not v.isalpha() or v[0].isupper() or len(v) < 3:
+                    break
+                out.append(stem(v))
+    return out
+
+
 def supported(text, cited_texts):
     """Every exact token of a statement and most of its content words occur in the cited text."""
     from .stemming import query_stems, stem_text
-    support = _norm(' '.join(cited_texts))
+    # Numbers, codes and addresses must be in the cited text itself, not in its heading.
+    support = _norm(' '.join(t.split(HEAD_END)[-1] for t in cited_texts))
     exact = [t for t in CLAIM_TOKENS.findall(text) if _norm(t) not in support]
     if exact:
         return False, exact
+    have = set(stem_text(' '.join(cited_texts)).split())
+    alien = [w for w in names(text) if not any(h.startswith(w[:5]) for h in have)]
+    if alien:                     # «Дирекция по информационным технологиям» cited from «Дирекция по науке»
+        return False, ['имя: ' + ' '.join(alien)]
     stems = query_stems(text)
     if not stems:
         return True, []
-    have = set(stem_text(' '.join(cited_texts)).split())
     share = sum(1 for s in stems if any(h.startswith(s[:5]) for h in have)) / len(stems)
     return share >= 0.6, ([] if share >= 0.6 else [f'слова: {share:.0%}'])
 
@@ -256,14 +291,14 @@ def repair(text, chunks, cited=()):
     from .stemming import query_stems, stem_text
     stems = query_stems(text)
     def share(n):
-        have = set(stem_text(chunks[n - 1]['text']).split())
+        have = set(stem_text(support_text(chunks[n - 1])).split())
         return sum(1 for s in stems if any(h.startswith(s[:5]) for h in have)) / (len(stems) or 1)
     # Keep the model's own fragment when it carries part of the statement.
     for base in sorted((b for b in cited if share(b) >= 0.3), key=share, reverse=True):
         for n in range(1, len(chunks) + 1):
-            if n != base and supported(text, [chunks[base - 1]['text'], chunks[n - 1]['text']])[0]:
+            if n != base and supported(text, [support_text(chunks[base - 1]), support_text(chunks[n - 1])])[0]:
                 return [base, n]
-    singles = [n for n in range(1, len(chunks) + 1) if supported(text, [chunks[n - 1]['text']])[0]]
+    singles = [n for n in range(1, len(chunks) + 1) if supported(text, [support_text(chunks[n - 1])])[0]]
     return [max(singles, key=share)] if singles else None
 
 
@@ -276,7 +311,7 @@ def verify(raw, chunks):
         if not text:
             continue
         sources = list(dict.fromkeys(sources))
-        ok, why = supported(text, [chunks[n - 1]['text'] for n in sources]) if sources else (False, ['нет ссылки на фрагмент'])
+        ok, why = supported(text, [support_text(chunks[n - 1]) for n in sources]) if sources else (False, ['нет ссылки на фрагмент'])
         if not ok:
             # A small model often states a correct fact but cites the wrong number:
             # look for context fragments that support the statement by the same rule.
@@ -289,7 +324,7 @@ def verify(raw, chunks):
             dropped.append({'text': text, 'why': ', '.join(map(str, why))})
     short = str(raw.get('short_answer') or '').strip()
     if short and kept:
-        ok, _ = supported(short, [c['text'] for item in kept for c in item['chunks']])
+        ok, _ = supported(short, [support_text(c) for item in kept for c in item['chunks']])
         if not ok: short = ''
     elif not kept:
         short = ''
@@ -347,6 +382,11 @@ def answer(db, question, when=None, deadline=None):
               'missing': [str(m) for m in content.get('missing') or [] if str(m).strip()],
               'headers': headers, 'seconds': round(time.perf_counter() - started, 2)}
     if status in ('answer', 'partial') and not kept:
+        if any(str(d['why']).startswith('имя') for d in dropped):
+            # The model answered about something the fragments do not name
+            # (a department or document absent from the base): no data, no fallback.
+            result.update(status='insufficient', items=[])
+            return result
         return None          # nothing verifiable: extractive fallback
     if status in ('insufficient', 'off_topic'):
         result['items'] = []
