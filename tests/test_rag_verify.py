@@ -66,12 +66,54 @@ class NameTest(unittest.TestCase):
         kept, _, _ = rag.verify(raw, self.ROWS)
         self.assertEqual(len(kept), 1)
 
-    def test_numbers_from_heading_do_not_count(self):
+    def test_requisites_from_heading_count(self):
+        # The reader sees the document's requisites in «Источник».
         chunk = {'id': 3, 'text': '2. Настоящий приказ вводится в действие с 01.01.2025.',
-                 'meta': {'document': 'ПРИКАЗ от 15.12.2024 № 610-2'}}
-        raw = {'items': [{'text': 'Приказ № 610-2 вводится в действие с 01.01.2025.', 'sources': [1]}]}
+                 'header': 'Приказ № 610-2 от 15.12.2024', 'meta': {'document': 'О внесении изменений'}}
+        raw = {'items': [{'text': 'Приказ № 610-2 от 15.12.2024 вводится в действие с 01.01.2025.', 'sources': [1]}]}
+        kept, _, _ = rag.verify(raw, [chunk])
+        self.assertEqual(len(kept), 1)
+
+    def test_amount_from_heading_does_not_count(self):
+        chunk = {'id': 3, 'text': '3.1. Первичная обработка обращения выполняется в течение 8 рабочих часов.',
+                 'meta': {'document': 'Регламент', 'section': '3 рабочих дня на ответ'}}
+        raw = {'items': [{'text': 'Первичная обработка обращения выполняется в течение 3 рабочих дней.', 'sources': [1]}]}
         kept, _, _ = rag.verify(raw, [chunk])
         self.assertEqual(kept, [])
+
+    def test_trailing_dot_of_address(self):
+        chunk = {'id': 4, 'text': '2.2. Подписанная заявка направляется в отдел закупок по адресу zakupki@example.invalid.'}
+        raw = {'items': [{'text': 'Заявку направляют в отдел закупок по адресу zakupki@example.invalid.', 'sources': [1]}]}
+        kept, _, _ = rag.verify(raw, [chunk])
+        self.assertEqual(len(kept), 1)
+
+    def test_fragment_references_are_not_facts(self):
+        raw = {'items': [{'text': 'Рабочий день начинается в 9:00 (фрагмент 4).', 'sources': [3]},
+                         {'text': '<<<[2] structure.xlsx Финансодержатель: Орлова Н.В.', 'sources': [2]}]}
+        kept, dropped, _ = rag.verify(raw, CHUNKS)
+        self.assertEqual(dropped, [])
+        self.assertEqual([k['text'] for k in kept], ['Рабочий день начинается в 9:00.', 'Финансодержатель: Орлова Н.В.'])
+
+    def test_absence_statement_is_not_a_cited_fact(self):
+        raw = {'items': [{'text': 'В документах не указан номер телефона охраны.', 'sources': [3]},
+                         {'text': 'Рабочий день начинается в 9:00.', 'sources': [3]}]}
+        kept, dropped, _ = rag.verify(raw, CHUNKS)
+        self.assertEqual([k['text'] for k in kept], ['Рабочий день начинается в 9:00.'])
+        self.assertEqual(dropped, [])
+
+    def test_bracket_left_after_file_name_is_closed(self):
+        self.assertEqual(rag.clean_claim('Срок — 5 рабочих дней (памятка слушателю, training-memo.pdf).'),
+                         'Срок — 5 рабочих дней (памятка слушателю).')
+
+    def test_point_numbers_are_kept(self):
+        self.assertEqual(rag.clean_claim('Срок — 3 рабочих дня согласно пункту 3.1.'), 'Срок — 3 рабочих дня согласно пункту 3.1.')
+
+    def test_supported_short_answer_rescues_failed_items(self):
+        raw = {'short_answer': 'Рабочий день заканчивается в 18:00.',
+               'items': [{'text': 'См. раздел 7 и фрагмент 12: конец дня в 19:00.', 'sources': [3]}]}
+        kept, _, _ = rag.verify(raw, CHUNKS)
+        self.assertEqual([k['text'] for k in kept], ['Рабочий день заканчивается в 18:00.'])
+        self.assertEqual([c['id'] for c in kept[0]['chunks']], [3])
 
     def test_document_title_counts_as_support(self):
         chunk = {'id': 2, 'text': '1.1. Работник оформляет заявку на командировку по форме КМ-7.',
@@ -94,6 +136,14 @@ class ConflictTest(unittest.TestCase):
         self.assertEqual(found, [(1, 2, '10 рабочих дней', '5 рабочих дней')])
         self.assertIn('Расхождение: фрагменты [1] и [2]', rag.prompt('В какой срок сдать копию удостоверения?',
                                                                     [self.RULE, self.MEMO], {}))
+
+    def test_shared_deadline_words_do_not_make_a_subject(self):
+        self.assertEqual(rag.conflicts([self.RULE, self.MEMO], 'Почему авансовый отчёт сдают за 10 рабочих дней?'), [])
+
+    def test_absence_short_answer_is_not_rescued(self):
+        chunk = frag('A', '2.2. В обращении указываются ФИО, кабинет, телефон, описание проблемы и инвентарный номер устройства.')
+        kept, _, _ = rag.verify({'short_answer': 'В документах не указан номер телефона охраны.', 'items': []}, [chunk])
+        self.assertEqual(kept, [])
 
     def test_question_about_something_else(self):
         self.assertEqual(rag.conflicts([self.RULE, self.MEMO], 'Что будет, если уволиться через полгода после обучения?'), [])

@@ -104,7 +104,8 @@ def fold(text):
 def has_token(token, text):
     """A number, code or address of a statement is one of the tokens of the cited text,
     split by the same pattern: 10 is not found in 20100, parts of 01.10.2023 are."""
-    return norm(token) in {norm(t) for t in CLAIM_TOKENS.findall(text)}
+    strip = lambda t: norm(t).rstrip('.,;:')
+    return strip(token) in {strip(t) for t in CLAIM_TOKENS.findall(text)}
 
 
 GAP = re.compile(r'Недостаточно данных для части вопроса:.*?(?=Самопроверка|Источник:|Применимость|$)', re.S)
@@ -176,6 +177,7 @@ def answers(cases, env, db, needles):
             parsed = Items(); parsed.feed(page)
             body = re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', ' ', page.split('</form>', 1)[-1])))
             cited, unsupported, claims, detail = [], [], 0, []
+            sources_line = ' '.join(i['text'] for i in parsed.items if i['text'].strip().startswith('Источник:'))
             for item in parsed.items:
                 texts, rows = [], {}
                 for href in item['hrefs']:
@@ -194,7 +196,8 @@ def answers(cases, env, db, needles):
                 if not texts or item['text'].strip().startswith(('Ограничение:', 'Источник:', 'Применимость')):
                     continue
                 claims += 1
-                support = ' '.join(unit_text(db, parse_qs(urlsplit(h).query).get('id', [''])[0]) for h in item['hrefs'])
+                # The requisites the answer prints in «Источник» are visible to the reader too.
+                support = ' '.join(unit_text(db, parse_qs(urlsplit(h).query).get('id', [''])[0]) for h in item['hrefs']) + ' ' + sources_line
                 claim = re.sub(r'\b[A-Z][\w-]*@[0-9a-f]{8,}#\S+', ' ', item['text'])   # drop printed fragment IDs
                 missing = [t for t in CLAIM_TOKENS.findall(claim) if not has_token(t, support)]
                 if missing: unsupported.append({'text': item['text'][:200], 'missing': missing[:5]})

@@ -26,22 +26,36 @@ Windows PowerShell: `docker run --rm --name employee-navigator -p 127.0.0.1:8000
 
 **Гибридный поиск (необязательно).** `docker build --build-arg WITH_DENSE=1 --build-arg RETRIEVAL=hybrid -t employee-navigator:hybrid .` — при сборке скачивается открытая модель `multilingual-e5-small` (ONNX, ≈490 МБ) с проверкой контрольных сумм (`tools/fetch_model.py`); при старте фрагменты кодируются локально. Без этого — BM25.
 
-**Ответ генератором RAG (рекомендуемая конфигурация, необязательно).**
+**Ответ генератором RAG — рекомендуемая конфигурация.** Документы — в `data/originals/`.
+
+Генератор на видеокарте NVIDIA, ответ около 3 с:
 
 ```sh
-docker build --build-arg WITH_RAG=1 --build-arg PIPELINE=rag --build-arg RETRIEVAL=hybrid -t employee-navigator:rag .
+docker compose --profile gpu up --build
 ```
 
-При сборке:
-- `llama-cpp-python` компилируется в отдельной стадии (нужен интернет, 5–10 мин);
-- скачиваются с проверкой SHA-256 три модели:
-  - `multilingual-e5-small` — ≈490 МБ;
-  - cross-encoder `bge-reranker-v2-m3` int8 — ≈570 МБ, Apache-2.0;
-  - генератор `Qwen2.5-3B-Instruct` q4_k_m — ≈2.1 ГБ, Qwen Research License: проверьте условия до коммерческого использования.
+Без видеокарты NVIDIA — один контейнер, генератор на CPU, ответ порядка 30–60 с (оценка, не замер):
 
-Всё работает на CPU внутри контейнера. Ответ — около 20 с; нужно ≈4 ГБ ОЗУ и ≈6 ГБ диска. Запуск тот же, с тегом `employee-navigator:rag`. Если модель недоступна, сервис отвечает извлекающим конвейером.
+```sh
+docker compose --profile cpu up --build
+```
 
-Качество на вымышленном золотом наборе — в разделе «Ответ генератором (RAG)» ниже и в [журнале](sdd/quality-progress.md). Сборка этого варианта в данной среде не проверялась.
+Интерфейс — http://127.0.0.1:8000/, только на этой машине.
+
+При сборке (нужен интернет) модели скачиваются с проверкой SHA-256:
+- `multilingual-e5-small` — ≈490 МБ;
+- cross-encoder `bge-reranker-v2-m3` int8 — ≈570 МБ, Apache-2.0;
+- генератор `Qwen3-4B-Instruct-2507` q4_k_m — ≈2.5 ГБ, Apache-2.0.
+
+Устройство режимов:
+- **GPU.** Генератор работает в отдельном контейнере — официальный образ `llama.cpp` с CUDA, закреплённый по digest (`Dockerfile.llm-gpu`). Наружу он не публикуется; навигатор обращается к нему по имени сервиса `llm` внутри сети compose. Нужны драйвер NVIDIA с CUDA 12.4+ и NVIDIA Container Toolkit (Docker Desktop — WSL2 с поддержкой GPU). Видеопамять — около 5 ГБ.
+- **CPU.** `llama-cpp-python` компилируется в отдельной стадии сборки (5–10 мин). Нужно ≈5 ГБ ОЗУ.
+
+Если генератор недоступен, сервис отвечает извлекающим конвейером.
+
+Без compose: `docker build --build-arg WITH_RAG=1 --build-arg PIPELINE=rag --build-arg RETRIEVAL=hybrid -t employee-navigator:rag .` — это вариант для CPU.
+
+Качество на вымышленном золотом наборе — в разделе «Ответ генератором (RAG)» ниже и в [журнале](sdd/quality-progress.md). Сборка образов в данной среде не проверялась: проверены только статические тесты Dockerfile и compose.
 
 Проверки внутри образа: `docker run --rm --network none --entrypoint python employee-navigator -m unittest discover -s tests -v`; учебный каталог и вымышленная фикстура для показа без реальных документов: `import-fixture`, `load-evidence fixtures/evidence/synthetic.json` (используйте отдельную папку индекса: `load-evidence` заменяет каталог).
 ### Локальный импорт для владельца данных
@@ -113,20 +127,20 @@ done
 `NAVIGATOR_PIPELINE=rag` включает конвейер RAG (`app/rag.py`):
 - поиск чанков (`NAVIGATOR_RERANK=1` — переупорядочивание локальным cross-encoder);
 - контекст;
-- локальный `Qwen2.5-3B-Instruct` Q4_K_M в llama.cpp с ответом по JSON-схеме;
+- локальный `Qwen3-4B-Instruct-2507` Q4_K_M (Apache-2.0) в llama.cpp с ответом по JSON-схеме (до итерации 37 — `Qwen2.5-3B-Instruct`);
 - проверка каждого утверждения кодом по процитированному тексту;
 - при сбое — извлекающий ответ.
 
 Модели скачиваются один раз:
-- `data/models/qwen2.5-3b-instruct/qwen2.5-3b-instruct-q4_k_m.gguf`;
+- `python tools/fetch_model.py qwen3`;
 - `python tools/fetch_model.py reranker`.
 
 Два способа запуска генератора:
-- **CPU, в процессе** (как в образе): `pip install llama-cpp-python`. Ответ — около 20 с.
-- **GPU, локальный `llama-server`** (для разработки и оценки). Ответ — около 1 с на RTX-классе. Нужна официальная сборка llama.cpp с CUDA для Windows (`llama-bXXXX-bin-win-cuda-13.x-x64.zip` и `cudart-…zip` с github.com/ggml-org/llama.cpp, сверить SHA-256 со страницы выпуска):
+- **CPU, в процессе** (запасной режим образа): `pip install -r requirements-rag.txt`. Ответ — десятки секунд.
+- **GPU, локальный `llama-server`** (для разработки и оценки). Ответ — около 3 с на RTX-классе. Нужна официальная сборка llama.cpp с CUDA для Windows (`llama-bXXXX-bin-win-cuda-13.x-x64.zip` и `cudart-…zip` с github.com/ggml-org/llama.cpp, сверить SHA-256 со страницы выпуска):
 
   ```sh
-  llama-server -m data/models/qwen2.5-3b-instruct/qwen2.5-3b-instruct-q4_k_m.gguf -ngl 99 -c 16384 -np 4 --host 127.0.0.1 --port 8081
+  llama-server -m data/models/qwen3-4b-instruct-2507/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf -ngl 99 -c 16384 -np 4 --host 127.0.0.1 --port 8081
   NAVIGATOR_PIPELINE=rag NAVIGATOR_LLM_URL=http://127.0.0.1:8081 python -m app
   ```
 

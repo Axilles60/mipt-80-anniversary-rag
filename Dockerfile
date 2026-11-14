@@ -2,8 +2,9 @@
 # as source only, so it is compiled here and only the wheel reaches the image.
 FROM python:3.13-slim AS llama-build
 ARG WITH_RAG=0
+ARG LOCAL_LLM=1
 COPY requirements-rag.txt /tmp/
-RUN mkdir -p /wheels && if [ "$WITH_RAG" = "1" ]; then \
+RUN mkdir -p /wheels && if [ "$WITH_RAG" = "1" ] && [ "$LOCAL_LLM" = "1" ]; then \
       apt-get update && apt-get install -y --no-install-recommends build-essential cmake && \
       pip wheel --no-cache-dir --wheel-dir /wheels -r /tmp/requirements-rag.txt; \
     fi
@@ -13,11 +14,14 @@ FROM python:3.13-slim
 # embedding model at build time (network only during the build) and verifies
 # its checksums. RETRIEVAL selects the default mode: bm25 | hybrid | dense.
 # Optional RAG answer: --build-arg WITH_RAG=1 (implies the embedding model) adds
-# the local generator Qwen2.5-3B-Instruct q4_k_m (llama.cpp, CPU) and the
-# cross-encoder bge-reranker-v2-m3; PIPELINE=rag makes it the default answer.
-# Recommended: --build-arg WITH_RAG=1 --build-arg PIPELINE=rag --build-arg RETRIEVAL=hybrid
+# the cross-encoder bge-reranker-v2-m3 and the local generator
+# Qwen3-4B-Instruct-2507 q4_k_m (llama.cpp on CPU); PIPELINE=rag makes it the
+# default answer. LOCAL_LLM=0 leaves the generator out of this image: it then
+# runs on the GPU in the llama.cpp service of docker-compose.yml (profile gpu).
+# Recommended: docker compose --profile gpu up --build (see README).
 ARG WITH_DENSE=0
 ARG WITH_RAG=0
+ARG LOCAL_LLM=1
 ARG RETRIEVAL=bm25
 ARG PIPELINE=extractive
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOST=0.0.0.0 PORT=8000 \
@@ -25,7 +29,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOST=0.0.0.0 PORT=8000 \
     NAVIGATOR_IMPORT_DIR=/data/originals \
     NAVIGATOR_EMBED_MODEL=/opt/models/multilingual-e5-small \
     NAVIGATOR_RERANK_MODEL=/opt/models/bge-reranker-v2-m3 \
-    NAVIGATOR_LLM=/opt/models/qwen2.5-3b-instruct/qwen2.5-3b-instruct-q4_k_m.gguf \
+    NAVIGATOR_LLM=/opt/models/qwen3-4b-instruct-2507/Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf \
     NAVIGATOR_RETRIEVAL=${RETRIEVAL} \
     NAVIGATOR_PIPELINE=${PIPELINE}
 WORKDIR /app
@@ -35,12 +39,12 @@ COPY requirements.txt requirements-dense.txt requirements-rag.txt ./
 COPY --from=llama-build /wheels /wheels
 RUN pip install --no-cache-dir -r requirements.txt && \
     if [ "$WITH_DENSE" = "1" ] || [ "$WITH_RAG" = "1" ]; then pip install --no-cache-dir -r requirements-dense.txt; fi && \
-    if [ "$WITH_RAG" = "1" ]; then pip install --no-cache-dir --no-index /wheels/*.whl; fi && \
+    if [ "$WITH_RAG" = "1" ] && [ "$LOCAL_LLM" = "1" ]; then pip install --no-cache-dir --no-index /wheels/*.whl; fi && \
     rm -rf /wheels
 COPY tools ./tools
 RUN if [ "$WITH_DENSE" = "1" ] || [ "$WITH_RAG" = "1" ]; then python tools/fetch_model.py e5 /opt/models/multilingual-e5-small; fi && \
-    if [ "$WITH_RAG" = "1" ]; then python tools/fetch_model.py reranker /opt/models/bge-reranker-v2-m3 && \
-      python tools/fetch_model.py qwen /opt/models/qwen2.5-3b-instruct; fi
+    if [ "$WITH_RAG" = "1" ]; then python tools/fetch_model.py reranker /opt/models/bge-reranker-v2-m3; fi && \
+    if [ "$WITH_RAG" = "1" ] && [ "$LOCAL_LLM" = "1" ]; then python tools/fetch_model.py qwen3 /opt/models/qwen3-4b-instruct-2507; fi
 COPY app ./app
 COPY fixtures ./fixtures
 COPY tests ./tests

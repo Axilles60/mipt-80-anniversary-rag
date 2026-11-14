@@ -118,7 +118,7 @@
  {"id": "T117", "type": "partial", "question": "Какой минимальный размер пароля и какие символы в нём обязательны?", "expected": ["ACC-1.2"], "facts": ["12"], "forbidden": [], "expect": "partial"},
  {"id": "T118", "type": "partial", "question": "Кто согласует VPN и за сколько дней его подключают?", "expected": ["ACC-2.2"], "facts": ["директор по информационным технологиям"], "forbidden": [], "expect": "partial"},
  {"id": "T119", "type": "false_premise", "question": "Почему суточные в командировке 1000 условных единиц?", "expected": ["TRP-2.1"], "facts": ["700"], "forbidden": ["суточн\\w*[^.]{0,30}составля\\w*\\W+1000"], "expect": "answer"},
- {"id": "T120", "type": "false_premise", "question": "Как оформить заявление на пропуск по форме КМ-7?", "expected": ["FRM-T"], "facts": ["Приложени\\w* 1|заявлени"], "forbidden": ["пропуск\\w*[^.]{0,40}по форме КМ-7"], "expect": "answer"},
+ {"id": "T120", "type": "false_premise", "question": "Как оформить заявление на пропуск по форме КМ-7?", "expected": ["FRM-T", "FRM-1"], "facts": ["Приложени\\w* 1|заявлени"], "forbidden": ["пропуск\\w*[^.]{0,40}по форме КМ-7"], "expect": "answer"},
  {"id": "T121", "type": "false_premise", "question": "Где в корпусе А место для курения?", "expected": ["RUL-4"], "facts": ["корпуса Б"], "forbidden": [], "expect": "answer"},
  {"id": "T122", "type": "false_premise", "question": "Почему бюро пропусков выдаёт постоянный пропуск 10 рабочих дней?", "expected": ["PN-3"], "facts": ["3 рабочих дней"], "forbidden": [], "expect": "answer"},
  {"id": "T123", "type": "false_premise", "question": "Восстановление утерянного пропуска стоит 500 условных единиц — куда платить?", "expected": ["PN-4"], "facts": ["бесплатно"], "forbidden": [], "expect": "answer"},

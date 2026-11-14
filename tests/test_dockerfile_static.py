@@ -28,7 +28,7 @@ class DockerfileStaticTest(unittest.TestCase):
 
     def test_fetched_models_are_pinned(self):
         fetched = re.findall(r'fetch_model\.py (\w+) (\S+?)[;\s]', DOCKERFILE)
-        self.assertEqual({name for name, _ in fetched}, {'e5', 'reranker', 'qwen'})
+        self.assertEqual({name for name, _ in fetched}, {'e5', 'reranker', 'qwen3'})
         for name, target in fetched:
             with self.subTest(model=name):
                 _, files = fetch_model.MODELS[name]
@@ -42,8 +42,8 @@ class DockerfileStaticTest(unittest.TestCase):
         env = dict(re.findall(r'(NAVIGATOR_\w+)=(\S+)', DOCKERFILE))
         self.assertEqual(env['NAVIGATOR_EMBED_MODEL'], targets['e5'])
         self.assertEqual(env['NAVIGATOR_RERANK_MODEL'], targets['reranker'])
-        self.assertTrue(env['NAVIGATOR_LLM'].startswith(targets['qwen'] + '/'))
-        self.assertIn(Path(env['NAVIGATOR_LLM']).name, fetch_model.MODELS['qwen'][1])
+        self.assertTrue(env['NAVIGATOR_LLM'].startswith(targets['qwen3'] + '/'))
+        self.assertIn(Path(env['NAVIGATOR_LLM']).name, fetch_model.MODELS['qwen3'][1])
 
 
 if __name__ == '__main__':

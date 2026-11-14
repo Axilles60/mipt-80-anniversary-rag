@@ -1,7 +1,7 @@
 """RAG answer: retrieve chunks, give them to a local LLM, verify every claim (stage R5).
 
 Enabled by NAVIGATOR_PIPELINE=rag. The model is a local GGUF file run by
-llama.cpp (NAVIGATOR_LLM, default data/models/qwen2.5-3b-instruct/…q4_k_m.gguf)
+llama.cpp (NAVIGATOR_LLM, default data/models/qwen3-4b-instruct-2507/…Q4_K_M.gguf)
 inside this process, or by a llama-server on this machine (NAVIGATOR_LLM_URL,
 loopback only — e.g. the same model on the GPU); nothing leaves the machine. The answer is generated as JSON constrained by a
 schema (llama.cpp grammar), then every statement is checked by code against
@@ -22,7 +22,7 @@ import threading
 import time
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_LLM = ROOT / 'data' / 'models' / 'qwen2.5-3b-instruct' / 'qwen2.5-3b-instruct-q4_k_m.gguf'
+DEFAULT_LLM = ROOT / 'data' / 'models' / 'qwen3-4b-instruct-2507' / 'Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf'
 CONTEXT_TOKENS = 2200   # chunk text given to the model (CPU prefill dominates latency)
 MAX_ANSWER_TOKENS = 600
 RETRIEVE_K = 8
@@ -92,13 +92,17 @@ class LocalModel:
 class ServerModel:
     """A llama.cpp server (llama-server) on this machine, e.g. on the GPU.
 
-    Only loopback addresses are accepted: document text never leaves the machine.
+    Accepted: loopback addresses, or a single-label host name such as the compose
+    service «llm» — such a name resolves only inside the local network of the
+    containers, never to the internet. Document text never leaves the machine.
     """
     def __init__(self, url):
         from urllib.parse import urlsplit
         host = urlsplit(url).hostname or ''
-        if host not in ('127.0.0.1', 'localhost', '::1'):
-            raise ValueError('NAVIGATOR_LLM_URL must point to this machine (127.0.0.1/localhost)')
+        local_service = re.fullmatch(r'[a-z][a-z0-9-]*', host) is not None
+        if host not in ('127.0.0.1', 'localhost', '::1') and not local_service:
+            raise ValueError('NAVIGATOR_LLM_URL must point to this machine (127.0.0.1/localhost) '
+                             'or to a local container by its single-label name (e.g. http://llm:8080)')
         self.url = url.rstrip('/') + '/v1/chat/completions'
 
     def complete(self, messages, schema=None, max_tokens=MAX_ANSWER_TOKENS):
@@ -251,13 +255,19 @@ QUANTITY = re.compile(r'(\d+(?:[.,]\d+)?)\s+((?:рабоч|календарн)\w
                       r'месяц\w*|услов\w*\s+единиц\w*|тысяч\w*)', re.I)
 
 
+TIME_WORDS = ('рабоч', 'календар', 'дне', 'дня', 'ден', 'час', 'срок', 'течен', 'сда', 'сдат', 'подат', 'пода',
+              'год', 'лет', 'месяц', 'недел', 'тысяч', 'услов', 'единиц', 'скольк', 'когд')
+
+
 def conflicts(chunks, question=''):
     """Pairs of fragments from different documents about the same thing (most
     content stems shared) that state different amounts in the same unit:
     (number i, number j, amount in i, amount in j). Found by code, shown to the
     model as a hint (EVD-06: both grounds are shown, none is chosen silently)."""
     from .stemming import query_stems, stem_text
-    asked = set(query_stems(question)) if question else set()
+    # Words of a deadline or an amount («сдать … за 10 рабочих дней») do not name the
+    # subject: two fragments about different things share them.
+    asked = {q for q in query_stems(question) if not q.startswith(TIME_WORDS)} if question else set()
     def unit(u):
         return ' '.join(w[:5] for w in u.lower().split())
     info = []
@@ -289,7 +299,8 @@ def support_text(chunk):
     """What a citation of the chunk shows a reader: its text with the document
     title, section and parent rows (names in a statement may come from them)."""
     meta = chunk.get('meta') or {}
-    head = ' '.join(x for x in [meta.get('document') or '', meta.get('section') or '', ' '.join(meta.get('parents') or [])] if x)
+    head = ' '.join(x for x in [chunk.get('header') or '', meta.get('document') or '', meta.get('section') or '',
+                                ' '.join(meta.get('parents') or [])] if x)
     return (head + HEAD_END if head else '') + chunk['text']
 
 
@@ -316,6 +327,10 @@ def names(text):
     return out
 
 
+def _tok(token):
+    return _norm(token).rstrip('.,;:')
+
+
 def supported(text, cited_texts):
     """Every exact token of a statement and most of its content words occur in the cited text."""
     from .stemming import query_stems, stem_text
@@ -323,8 +338,10 @@ def supported(text, cited_texts):
     cited_raw = ' '.join(t.split(HEAD_END)[-1] for t in cited_texts)
     support = _norm(cited_raw)
     # Whole tokens split by the same pattern: 10 is not found in 20100, parts of 01.10.2023 are.
-    have_tokens = {_norm(t) for t in CLAIM_TOKENS.findall(cited_raw)}
-    exact = [t for t in CLAIM_TOKENS.findall(text) if _norm(t) not in have_tokens]
+    # Numbers, dates and order numbers may come from the heading (the reader sees the
+    # document's requisites in «Источник»); amounts with a unit only from the text below.
+    have_tokens = {_tok(t) for t in CLAIM_TOKENS.findall(' '.join(cited_texts).replace(HEAD_END, ' '))}
+    exact = [t for t in CLAIM_TOKENS.findall(text) if _tok(t) not in have_tokens]
     # A number with its unit must occur with the same unit («700 тысяч» is not «700 условных единиц»).
     exact += [f'{v} {u}' for v, u in QUANTITY.findall(text)
               if not re.search(r'(?<![\w.,:-])' + re.escape(v) + r'\s+(?:\w+\s+)?' + re.escape(u.lower()[:5]), support)]
@@ -362,11 +379,36 @@ def repair(text, chunks, cited=()):
     return [max(singles, key=share)] if singles else None
 
 
+FRAGMENT_REF = re.compile(
+    r'<<<|>>>|\(\s*(?:см\.\s*)?фрагмент\w*\s*\[?\d+\]?(?:\s*(?:,|и)\s*\[?\d+\]?)*\s*\)|'
+    r'(?:фрагмент\w*\s*)?\[\d+\](?:\s*,\s*\[\d+\])*|\bфрагмент\w*\s+\d+(?:\s*(?:,|и)\s*\d+)*|'
+    r'(?:см\.\s*)?(?:документ\s+)?[\w.-]+\.(?:docx|pdf|xlsx|zip)\b(?:,?\s*раздел\s+\d+)?', re.I)
+
+
+def clean_claim(text):
+    """A statement without the model's references to the numbered fragments
+    («(фрагмент 4)», «<<<[6] phones.xlsx», «см. документ x.xlsx, раздел 8»): those
+    numbers are not facts, must not be checked as facts, and are not shown."""
+    text = FRAGMENT_REF.sub(' ', text)
+    # «(памятка слушателю, )» after a removed file name: drop the dangling separator or empty brackets
+    text = re.sub(r'\(\s*([^()]*?)[\s,;]*\)', lambda m: f'({m.group(1).strip()})' if m.group(1).strip() else ' ', text)
+    return re.sub(r'\s+([.,;:])', r'\1', re.sub(r'\s{2,}', ' ', text)).strip(' ,;—-')
+
+
+ABSENCE = re.compile(r'\b(?:не\s+(?:указан|упомина|содерж|предусмотрен|приведен|приведён|определен|определён|'
+                     r'установлен|сказано|говорится)\w*|нет\s+(?:информаци|данных|сведени|указани)\w*|отсутству\w*|'
+                     r'не\s+найден\w*)', re.I)
+
+
 def verify(raw, chunks):
     """Keep statements whose cited chunks support them; report what was dropped."""
     kept, dropped = [], []
     for item in raw.get('items') or []:
-        text = str(item.get('text') or '').strip()
+        text = clean_claim(str(item.get('text') or ''))
+        if ABSENCE.search(text) and not CLAIM_TOKENS.search(text):
+            # «The documents do not state X» is a gap, not a fact: it is not shown
+            # as a cited statement (a fragment would seem to confirm the absence).
+            continue
         sources = [n for n in item.get('sources') or [] if isinstance(n, int) and 1 <= n <= len(chunks)]
         if not text:
             continue
@@ -382,7 +424,14 @@ def verify(raw, chunks):
             kept.append({'text': text, 'chunks': [chunks[n - 1] for n in dict.fromkeys(sources)]})
         else:
             dropped.append({'text': text, 'why': ', '.join(map(str, why))})
-    short = str(raw.get('short_answer') or '').strip()
+    short = clean_claim(str(raw.get('short_answer') or ''))
+    if short and not kept and not (ABSENCE.search(short) and not CLAIM_TOKENS.search(short)):
+        # Every item failed, but the short answer may state the fact cleanly:
+        # it is kept only if some context fragments support it by the same rule.
+        found = repair(short, chunks)
+        if found:
+            kept.append({'text': short, 'chunks': [chunks[n - 1] for n in found]})
+            short = ''
     if short and kept:
         ok, _ = supported(short, [support_text(c) for item in kept for c in item['chunks']])
         if not ok: short = ''
@@ -437,6 +486,8 @@ def answer(db, question, when=None, deadline=None):
         except (OSError, ValueError, KeyError, IndexError):   # server down, broken JSON: extractive fallback
             return None
     status = content.get('status')
+    for c in chunks:
+        c['header'] = headers.get((c['source_id'], c['version']), '')
     kept, dropped, short = verify(content, chunks)
     result = {'status': status, 'short_answer': short, 'items': kept, 'dropped': dropped,
               'missing': [str(m) for m in content.get('missing') or [] if str(m).strip()],

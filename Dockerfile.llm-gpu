@@ -1,0 +1,12 @@
+# Generator on an NVIDIA GPU for the RAG answer (docker compose --profile gpu).
+# The official llama.cpp CUDA server, pinned by digest; the GGUF model is
+# downloaded at build time by tools/fetch_model.py and checked by SHA-256.
+# The server listens only on the compose network: the navigator service
+# reaches it as http://llm:8080; nothing is published to the host.
+FROM python:3.13-slim AS model
+ARG LLM=qwen3
+COPY tools/fetch_model.py /tools/fetch_model.py
+RUN python /tools/fetch_model.py ${LLM} /models
+
+FROM ghcr.io/ggml-org/llama.cpp:server-cuda@sha256:cabbb32aaee5abc5d8af3ebec89781a722ad2e83a37f409980008579a31fe767
+COPY --from=model /models /models

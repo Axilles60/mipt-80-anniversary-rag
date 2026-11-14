@@ -24,9 +24,12 @@ class FakeServer(BaseHTTPRequestHandler):
 
 class ServerBackendTest(unittest.TestCase):
     def test_remote_address_is_refused(self):
-        for url in ('http://10.0.0.5:8080', 'https://api.example.com'):
+        for url in ('http://10.0.0.5:8080', 'https://api.example.com', 'http://llm.example.com:8080'):
             with self.subTest(url=url), self.assertRaises(ValueError):
                 rag.ServerModel(url)
+
+    def test_local_container_name_is_accepted(self):
+        self.assertTrue(rag.ServerModel('http://llm:8080').url.startswith('http://llm:8080/'))
 
     def test_request_carries_schema_and_returns_content(self):
         server = HTTPServer(('127.0.0.1', 0), FakeServer)

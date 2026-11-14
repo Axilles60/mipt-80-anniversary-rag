@@ -4,7 +4,7 @@ Run once with network access — during `docker build` or by hand. Only public
 model files are downloaded, pinned to a revision; no document or question is
 sent anywhere. The service itself never downloads anything.
 
-  python tools/fetch_model.py [e5|reranker|qwen] [TARGET_DIR]
+  python tools/fetch_model.py [e5|reranker|qwen|qwen3] [TARGET_DIR]
   python tools/fetch_model.py [TARGET_DIR]          (e5, as before)
 
 e5        intfloat/multilingual-e5-small, ONNX     -> data/models/multilingual-e5-small
@@ -12,6 +12,8 @@ reranker  BAAI/bge-reranker-v2-m3, ONNX int8        -> data/models/bge-reranker-
           (onnx-community conversion, Apache-2.0)
 qwen      Qwen/Qwen2.5-3B-Instruct-GGUF, q4_k_m      -> data/models/qwen2.5-3b-instruct
           (Qwen Research License: check the terms before commercial use)
+qwen3     Qwen3-4B-Instruct-2507, q4_k_m (bartowski)  -> data/models/qwen3-4b-instruct-2507
+          (Apache-2.0)
 """
 import hashlib
 from pathlib import Path
@@ -27,6 +29,7 @@ E5_FILES = {
 }
 RERANKER = 'https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/6f5ff65298512715a1e669753bc754d2bc8f367b/'
 QWEN = 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/7dabda4d13d513e3e842b20f0d435c732f172cbe/'
+QWEN3 = 'https://huggingface.co/bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF/resolve/ae44f08e1392f39c0e474af10c3ff8355c8b6688/'
 MODELS = {
     # name: (default target, {local name: (url, size, sha256)})
     'e5': ('data/models/multilingual-e5-small',
@@ -41,6 +44,10 @@ MODELS = {
                                   'b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80'),
         'config.json': (RERANKER + 'config.json', 848,
                         '122e922dcfed6503c8721e6fe1daf090340c3d95ca7f3aa3a72730b321a51cfd'),
+    }),
+    'qwen3': ('data/models/qwen3-4b-instruct-2507', {
+        'Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf': (QWEN3 + 'Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf', 2497280736,
+                                                    '2fde00ce69dd4899c70d020845e2638353015bba0fdf161b3eb965f2bca4464e'),
     }),
     'qwen': ('data/models/qwen2.5-3b-instruct', {
         'qwen2.5-3b-instruct-q4_k_m.gguf': (QWEN + 'qwen2.5-3b-instruct-q4_k_m.gguf', 2104932768,
