@@ -135,7 +135,8 @@ def coherent_candidates(db, question, parts, when=None):
     # Independently specific subquestions must retain their separate sources.
     if not staged(question) and len(parts)>1 and any(focus_terms(part) for part in parts[1:]):
         return None
-    focus=focus_terms(question if staged(question) or len(parts)==1 else parts[0])
+    # No parts (a query of punctuation or digits only): the question itself.
+    focus=focus_terms(question if staged(question) or len(parts)<=1 else parts[0])
     if len(focus)<2: return None
     # Document choice aggregates lexical evidence across many fragments.
     hits=imported(db,question,k=100,gate=False)

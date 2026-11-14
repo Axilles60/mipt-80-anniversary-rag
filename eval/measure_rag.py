@@ -211,6 +211,12 @@ def answers(cases, env, db, needles):
                'off_topic_recognised': f"{sum(r['verdict'] == 'correct' for r in out if r['expect'] == 'off_topic')}/{sum(r['expect'] == 'off_topic' for r in out)}",
                'p50_s': round(statistics.median(secs), 3) if secs else None,
                'p95_s': round(secs[min(len(secs) - 1, int(len(secs) * .95))], 3) if secs else None}
+    by_type = {}
+    for r in out:
+        row = by_type.setdefault(r['type'], {'n': 0, 'correct': 0, 'incomplete': 0, 'false_answer': 0, 'missed': 0, 'other': 0})
+        row['n'] += 1
+        row[r['verdict'] if r['verdict'] in row else 'other'] += 1
+    summary['by_type'] = dict(sorted(by_type.items()))
     return summary, out
 
 
