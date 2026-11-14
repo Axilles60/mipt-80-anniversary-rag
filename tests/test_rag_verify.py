@@ -63,6 +63,35 @@ class NameTest(unittest.TestCase):
         self.assertEqual(len(kept), 1)
 
 
+def frag(source, text):
+    return {'source_id': source, 'version': '1', 'text': text, 'meta': {}}
+
+
+class ConflictTest(unittest.TestCase):
+    RULE = frag('A', '2.1. Копию удостоверения о повышении квалификации работник сдаёт в отдел кадров в течение 10 рабочих дней после окончания обучения.')
+    MEMO = frag('B', '1. Копию удостоверения сдайте в отдел кадров в течение 5 рабочих дней после окончания курса.')
+
+    def test_same_subject_different_amounts(self):
+        found = rag.conflicts([self.RULE, self.MEMO], 'В какой срок сдать копию удостоверения?')
+        self.assertEqual(found, [(1, 2, '10 рабочих дней', '5 рабочих дней')])
+        self.assertIn('Расхождение: фрагменты [1] и [2]', rag.prompt('В какой срок сдать копию удостоверения?',
+                                                                    [self.RULE, self.MEMO], {}))
+
+    def test_question_about_something_else(self):
+        self.assertEqual(rag.conflicts([self.RULE, self.MEMO], 'Что будет, если уволиться через полгода после обучения?'), [])
+
+    def test_different_subjects(self):
+        training = frag('A', '1.3. Обучение стоимостью свыше 50 тысяч условных единиц согласует комиссия по обучению.')
+        purchase = frag('B', '1.3. Закупка стоимостью свыше 600 тысяч условных единиц проводится конкурсом.')
+        self.assertEqual(rag.conflicts([training, purchase], 'Кто согласует обучение стоимостью свыше 50 тысяч?'), [])
+
+    def test_amending_act_is_not_a_conflict(self):
+        base = frag('A', '1. Работник может работать дистанционно не более 2 дней в неделю.')
+        act = frag('B', '1. Внести изменения в положение о дистанционной работе: в пункте 1 слова «не более 2 дней в неделю» '
+                        'заменить словами «не более 3 дней в неделю».')
+        self.assertEqual(rag.conflicts([base, act], 'Сколько дней в неделю можно работать дистанционно?'), [])
+
+
 class ConfidenceTest(unittest.TestCase):
     def test_without_reranker_always_confident(self):
         self.assertTrue(rag.confident([{'id': 1}]))

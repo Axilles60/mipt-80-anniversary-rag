@@ -240,8 +240,49 @@ def prompt(question, chunks, headers, when=None):
         where = headers.get((c['source_id'], c['version']), '')
         section = c['meta'].get('section') or ''
         lines.append(f'<<<[{n}] {where}' + (f' — раздел «{section}»' if section and section not in where else '') + f'\n{c["text"]}\n>>>')
+    for i, j, a, b in conflicts(chunks, question):
+        lines.append(f'\nРасхождение: фрагменты [{i}] и [{j}] из разных документов называют для одного и того же '
+                     f'разные значения ({a} / {b}). Приведи оба значения отдельными пунктами со своими ссылками.')
     lines.append('\nОтветь JSON по схеме: status, short_answer, items[{text, sources[]}], missing[].')
     return '\n'.join(lines)
+
+
+QUANTITY = re.compile(r'(\d+(?:[.,]\d+)?)\s+((?:рабоч|календарн)\w*\s+(?:дн|дне|час)\w*|дн\w*|дне\w*|час\w*|лет|год\w*|'
+                      r'месяц\w*|услов\w*\s+единиц\w*|тысяч\w*)', re.I)
+
+
+def conflicts(chunks, question=''):
+    """Pairs of fragments from different documents about the same thing (most
+    content stems shared) that state different amounts in the same unit:
+    (number i, number j, amount in i, amount in j). Found by code, shown to the
+    model as a hint (EVD-06: both grounds are shown, none is chosen silently)."""
+    from .stemming import query_stems, stem_text
+    asked = set(query_stems(question)) if question else set()
+    def unit(u):
+        return ' '.join(w[:5] for w in u.lower().split())
+    info = []
+    for n, c in enumerate(chunks, 1):
+        stems = set(stem_text(c['text']).split())
+        amounts = {}
+        for value, u in QUANTITY.findall(c['text']):
+            amounts.setdefault(unit(u), set()).add((value, f'{value} {u}'))
+        info.append((n, (c['source_id'], c['version']), stems, amounts))
+    out = []
+    for a in range(len(info)):
+        for b in range(a + 1, len(info)):
+            n1, d1, s1, q1 = info[a]; n2, d2, s2, q2 = info[b]
+            common = s1 & s2
+            if d1[0] == d2[0] or not s1 or not s2 or len(common) / min(len(s1), len(s2)) < 0.7:
+                continue
+            # the question must be about what the two fragments share
+            if question and sum(1 for q in asked if any(c.startswith(q[:5]) for c in common)) < 2:
+                continue
+            for u in q1.keys() & q2.keys():
+                v1 = {v for v, _ in q1[u]}; v2 = {v for v, _ in q2[u]}
+                if not v1 & v2:          # disjoint amounts (an amending act names old and new)
+                    out.append((n1, n2, sorted(q1[u])[0][1], sorted(q2[u])[0][1]))
+                    break
+    return out
 
 
 def support_text(chunk):
