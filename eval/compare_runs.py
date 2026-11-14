@@ -15,7 +15,8 @@ import sys
 
 
 def load(spec):
-    path, _, config = spec.rpartition(':')
+    # «report.json» alone means its first configuration.
+    path, _, config = (spec, '', '') if spec.endswith('.json') else spec.rpartition(':')
     report = json.loads(Path(path).read_text(encoding='utf-8'))
     config = config or next(iter(report['configs']))
     return {a['id']: a for a in report['configs'][config]['answers']}

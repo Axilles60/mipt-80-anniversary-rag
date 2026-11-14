@@ -1,4 +1,7 @@
 # Two ways to run the navigator with the RAG answer; documents go to ./data/originals.
+# Other folders (e.g. the fictional demo corpus of the README use cases):
+#   NAVIGATOR_ORIGINALS_DIR=./data/demo/originals NAVIGATOR_INDEX_DIR=./data/demo/index docker compose ...
+# On Linux the index folder must be writable by the container user: NAVIGATOR_UID=$(id -u) NAVIGATOR_GID=$(id -g).
 #
 #   docker compose --profile gpu up --build     # recommended: generator on an NVIDIA GPU (~3 s per answer)
 #   docker compose --profile cpu up --build     # no NVIDIA GPU: one container, generator on CPU (tens of seconds)
@@ -15,11 +18,12 @@ x-navigator: &navigator
       PIPELINE: rag
       RETRIEVAL: hybrid
   image: employee-navigator:rag
+  user: "${NAVIGATOR_UID:-10001}:${NAVIGATOR_GID:-10001}"
   ports:
     - "127.0.0.1:8000:8000"
   volumes:
-    - ./data/originals:/data/originals:ro
-    - ./data/index:/data/index
+    - ${NAVIGATOR_ORIGINALS_DIR:-./data/originals}:/data/originals:ro
+    - ${NAVIGATOR_INDEX_DIR:-./data/index}:/data/index
 
 services:
   navigator:

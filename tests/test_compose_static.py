@@ -44,6 +44,13 @@ class ComposeStaticTest(unittest.TestCase):
                 self.assertTrue(port.startswith('127.0.0.1:'), port)
         self.assertEqual(services['navigator-gpu']['environment']['NAVIGATOR_LLM_URL'], 'http://llm:8080')
 
+    def test_data_folders_default_to_readme_layout(self):
+        for name in ('navigator', 'navigator-gpu'):
+            service = self.compose['services'][name]
+            self.assertEqual(service['volumes'], ['${NAVIGATOR_ORIGINALS_DIR:-./data/originals}:/data/originals:ro',
+                                                  '${NAVIGATOR_INDEX_DIR:-./data/index}:/data/index'])
+            self.assertEqual(service['user'], '${NAVIGATOR_UID:-10001}:${NAVIGATOR_GID:-10001}')
+
 
 if __name__ == '__main__':
     unittest.main()
