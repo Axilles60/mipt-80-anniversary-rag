@@ -93,5 +93,19 @@ class SkippedFilesTest(unittest.TestCase):
             self.assertTrue(any('Not imported' in line and 'notes.txt' in line and 'old.doc' in line for line in lines), lines)
 
 
+class ZipNameTest(unittest.TestCase):
+    """ZIP made on Windows without the UTF-8 flag: names in cp866 (seen on the real archive)."""
+    def test_windows_names_are_decoded(self):
+        import zipfile
+        from app.importer import zip_name
+        name = 'Документы/Положение о командировках.docx'
+        info = zipfile.ZipInfo(name.encode('cp866').decode('cp437')); info.flag_bits = 0
+        self.assertEqual(zip_name(info), name)
+        utf = zipfile.ZipInfo(name.encode('utf-8').decode('cp437')); utf.flag_bits = 0
+        self.assertEqual(zip_name(utf), name)
+        flagged = zipfile.ZipInfo(name); flagged.flag_bits = 0x800
+        self.assertEqual(zip_name(flagged), name)
+
+
 if __name__ == '__main__':
     unittest.main()
