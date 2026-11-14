@@ -60,8 +60,12 @@ def main():
                     _, headers = rag.build_context(db, c['question'], c.get('date') or None)
                     messages = [{'role': 'system', 'content': rag.SYSTEM},
                                 {'role': 'user', 'content': rag.prompt(c['question'], ctx, headers, c.get('date') or None)}]
-                    raw = json.loads(rag.llm().complete(messages))
-                    kept, dropped, short = rag.verify(raw, ctx)
+                    model = rag.llm()
+                    raw = json.loads(model.complete(messages))
+                    for ch in ctx:          # as rag.answer: headers, question, synonym judge
+                        ch['header'] = headers.get((ch['source_id'], ch['version']), '')
+                    kept, dropped, short = rag.verify(raw, ctx, c['question'],
+                                                      judge=lambda q, w, f: rag.same_subject(model, q, w, f))
                     print('   raw:', json.dumps(raw, ensure_ascii=False)[:600])
                     print('   kept:', [k['text'][:80] for k in kept], '| dropped:', dropped)
             print('expected units:', totals)
