@@ -216,6 +216,19 @@ def build_context(db, question, when=None):
         headers[key] = ' · '.join(x for x in [(chosen and next((c['meta'].get('document') for c in chosen
                                                                     if (c['source_id'], c['version']) == key), '')) or '',
                                               label(data) or '', name['filename'] if name else ''] if x)
+    # An amending act in the context: mark the amended document, so that the
+    # model takes the changed wording from the act (requisites read from text).
+    for key in rank:
+        act = requisites(db, *key)
+        for rel in act.get('relations') or []:
+            if rel.get('kind') != 'amends' or not rel.get('number'):
+                continue
+            for other in rank:
+                if other != key and requisites(db, *other).get('number') == rel['number']:
+                    since = act.get('effective') or ''
+                    since = '.'.join(reversed(since.split('-'))) if since else ''
+                    headers[other] += (f' · изменён приказом № {act.get("number")}' + (f' с {since}' if since else '')
+                                       + ': действующий текст изменённых пунктов — во фрагментах этого приказа')
     return chosen, headers
 
 
