@@ -120,7 +120,7 @@ NAVIGATOR_PIPELINE=rag NAVIGATOR_RETRIEVAL=hybrid NAVIGATOR_LLM_URL=http://127.0
 
 Генератор на CPU внутри процесса: `pip install -r requirements-rag.txt` (нужны компилятор C/C++ и cmake) и запуск без `NAVIGATOR_LLM_URL`.
 
-Демосервер работает от закоммиченной версии: код выкладывается `git archive HEAD`, хеш коммита записывается в `REVISION`.
+Демосервер работает из чистого клона этого репозитория (`git status` пуст): данные, модели и окружение Python лежат вне клона и передаются переменными окружения. Выкладка — `git fetch` и `git reset --hard origin/<ветка>` с перезапуском; на сервере всегда тот же коммит, что на GitHub.
 
 ## Документы проекта
 
