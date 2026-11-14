@@ -284,13 +284,22 @@ def build(db, source_id, version, title=None):
     return out
 
 
+def _has_vectors(db):
+    return db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='chunk_vectors'").fetchone() is not None
+
+
 def index_version(db, source_id, version):
     """(Re)build chunks and their full-text index for one version."""
     db.executescript(SCHEMA)
     chunks = build(db, source_id, version)
+    vectors = _has_vectors(db)
     with db:
         for (cid,) in db.execute('SELECT id FROM chunks WHERE source_id=? AND version=?', (source_id, version)).fetchall():
             db.execute('DELETE FROM chunks_fts WHERE id=?', (cid,))
+            # Chunk IDs repeat after a rebuild: a cached vector of the old text must go too
+            # (external audit of d23f0fc: the new text was never encoded).
+            if vectors:
+                db.execute('DELETE FROM chunk_vectors WHERE fragment_id=?', (cid,))
         db.execute('DELETE FROM chunks WHERE source_id=? AND version=?', (source_id, version))
         db.execute('DELETE FROM abbreviations WHERE source_id=? AND version=?', (source_id, version))
         db.execute("INSERT OR IGNORE INTO chunk_index VALUES ('version', ?)", (INDEX_VERSION,))
@@ -314,6 +323,8 @@ def ensure(db):
     if built is None or built[0] != INDEX_VERSION:
         with db:
             db.execute('DELETE FROM chunks'); db.execute('DELETE FROM chunks_fts'); db.execute('DELETE FROM abbreviations')
+            if _has_vectors(db):
+                db.execute('DELETE FROM chunk_vectors')
             db.execute("INSERT OR REPLACE INTO chunk_index VALUES ('version', ?)", (INDEX_VERSION,))
     missing = db.execute('''SELECT source_id, version FROM imports i WHERE status != 'error' AND NOT EXISTS
         (SELECT 1 FROM chunks c WHERE c.source_id=i.source_id AND c.version=i.version)''').fetchall()

@@ -28,6 +28,22 @@ class ServerBackendTest(unittest.TestCase):
             with self.subTest(url=url), self.assertRaises(ValueError):
                 rag.ServerModel(url)
 
+    def test_other_scheme_or_credentials_are_refused(self):
+        for url in ('ftp://localhost:8080', 'http://user:secret@127.0.0.1:8080', 'file:///etc/passwd'):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                rag.ServerModel(url)
+
+    def test_proxy_from_environment_is_not_used(self):
+        # A proxy that would receive the document text (external audit of d23f0fc).
+        server = HTTPServer(('127.0.0.1', 0), FakeServer)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.shutdown)
+        from unittest.mock import patch
+        with patch.dict('os.environ', {'HTTP_PROXY': 'http://127.0.0.1:9', 'http_proxy': 'http://127.0.0.1:9', 'NO_PROXY': ''}):
+            model = rag.ServerModel(f'http://localhost:{server.server_port}')
+            content = json.loads(model.complete([{'role': 'user', 'content': 'Сколько суточных?'}]))
+        self.assertEqual(content['items'][0]['sources'], [1])
+
     def test_local_container_name_is_accepted(self):
         self.assertTrue(rag.ServerModel('http://llm:8080').url.startswith('http://llm:8080/'))
 

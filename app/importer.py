@@ -200,8 +200,35 @@ def safe_zip_name(name):
     p = PurePosixPath(name)
     return bool(name) and not p.is_absolute() and not re.match(r'^[A-Za-z]:', name) and '\\' not in name and '..' not in p.parts and '__MACOSX' not in p.parts and not any(part.startswith('._') for part in p.parts)
 
-def batch(db_path, paths, manifest_path=None):
+def file_names(paths, root=None):
+    """{path: the name a file is imported under}. Its path under the imported folder,
+    so that two rules.docx in different folders are two documents (external audit of
+    d23f0fc); a file at the top of the folder keeps its plain name, as before. Without
+    a folder: the plain name, or the path under the common folder when names clash."""
+    files = [Path(p) for p in paths]
+    clash = {f.name for f in files if sum(g.name == f.name for g in files) > 1}
+    base = root
+    if base is None and clash:
+        try:
+            base = os.path.commonpath([str(f.resolve().parent) for f in files])
+        except ValueError:            # different drives
+            base = None
+    out = {}
+    for path, f in zip(paths, files):
+        name = f.name
+        if base is not None and (root is not None or f.name in clash):
+            try:
+                name = f.resolve().relative_to(Path(base).resolve()).as_posix()
+            except ValueError:
+                pass
+        out[path] = name
+    return out
+
+
+def batch(db_path, paths, manifest_path=None, root=None):
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    known_as = file_names(paths, root)
+    clashing = {n for n in (Path(v).name for v in known_as.values()) if sum(Path(v).name == n for v in known_as.values()) > 1}
     manifest = json.loads(Path(manifest_path).read_text()) if manifest_path else []
     hashes = {item['sha256']:item['id'] for item in manifest if item['id'] != 'SRC-00'}
     names = {item['name']:item['id'] for item in manifest if item['id'] != 'SRC-00'}
@@ -210,6 +237,13 @@ def batch(db_path, paths, manifest_path=None):
         init(db)
         def process(name, raw):
             sid = hashes.get(digest(raw)) or names.get(Path(name).name) or 'FILE-' + hashlib.sha256(name.encode()).hexdigest()[:16]
+            plain = Path(name).name
+            if name != plain and plain not in clashing and not db.execute('SELECT 1 FROM imports WHERE source_id=?', (sid,)).fetchone():
+                # Imported before under its plain name (an index built before paths were used):
+                # keep that document, so a new version is not taken for a new document.
+                legacy = 'FILE-' + hashlib.sha256(plain.encode()).hexdigest()[:16]
+                if db.execute('SELECT 1 FROM imports WHERE source_id=?', (legacy,)).fetchone():
+                    sid = legacy
             status = import_one(db,sid,name,raw)
             counts[status] = counts.get(status,0)+1
         for path in paths:
@@ -230,7 +264,7 @@ def batch(db_path, paths, manifest_path=None):
                                 record_error(db,'ZIP-ERROR',info.filename,None,exc)
                                 counts['error'] = counts.get('error',0)+1
                 else:
-                    process(p.name,p.read_bytes())
+                    process(known_as[path],p.read_bytes())
             except Exception as exc:
                 record_error(db,'FILE-ERROR',str(path),None,exc)
                 counts['error'] = counts.get('error',0)+1

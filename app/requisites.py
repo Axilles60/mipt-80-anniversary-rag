@@ -163,9 +163,11 @@ def status(db, versions, when=None):
         data = info.get(key) or requisites(db, *key)
         notes, state = [], 'ok'
         start = _start(data)
-        if when and start and when < start:
+        # Without a date the answer is for today: an act that comes into force later is not
+        # applied either (external audit of d23f0fc: «if when» let it through).
+        if start and moment < start:
             state = 'not_yet'
-            notes.append((f'{label(data)}: на {_ru(when)} ещё не действовал (по тексту документа); '
+            notes.append((f'{label(data)}: на {_ru(moment)} ещё не {"действовал" if when else "действует"} (по тексту документа); '
                           'для этой даты он не используется.', data.get('effective_basis') or data.get('basis')))
         for other, odata in info.items():
             if other == key: continue

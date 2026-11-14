@@ -286,6 +286,32 @@ class AuditProbeTest(unittest.TestCase):
                             '1.1. Закупка стоимостью до 100 тысяч условных единиц проводится у единственного поставщика.'))
 
 
+class GapTest(unittest.TestCase):
+    """The «no data for part of the question» line: a short naming of the gap only."""
+    KEPT = [{'text': 'Кабинет Отдела закупок — 310.'}]
+
+    def test_fact_inside_a_gap_is_not_shown(self):
+        self.assertEqual(rag.gaps(['Телефон службы поддержки: 2-31-00, кабинет 001'], []), [])
+
+    def test_examples_in_brackets_and_reasoning_are_cut(self):
+        out = rag.gaps(['Срок устранения неисправности (например, ремонт принтера) не указан в документах. '
+                        'В документах указан только срок первичной обработки.'], [])
+        self.assertEqual(out, ['Срок устранения неисправности не указан в документах'])
+
+    def test_gap_contradicting_the_answer_is_dropped(self):
+        # W29: «кабинет не указан» beside «кабинет — 310».
+        self.assertEqual(rag.gaps(['Кабинет Отдела закупок не указан в документах'], self.KEPT), [])
+
+    def test_other_gap_beside_the_answer_is_kept(self):
+        self.assertEqual(rag.gaps(['Телефон для срочных обращений'], self.KEPT), ['Телефон для срочных обращений'])
+
+    def test_references_and_fillers_are_dropped(self):
+        self.assertEqual(rag.gaps(['см. вопрос', 'Уточнение по фрагменту 3', 'Срок по документу № 5'], []), [])
+
+    def test_at_most_three_parts(self):
+        self.assertEqual(len(rag.gaps(['Срок подачи заявки; Форма заявки; Адрес подачи; Порядок согласования'], [])), 3)
+
+
 class ConfidenceTest(unittest.TestCase):
     def test_without_reranker_always_confident(self):
         self.assertTrue(rag.confident([{'id': 1}]))

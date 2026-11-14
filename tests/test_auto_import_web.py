@@ -44,7 +44,8 @@ class AutoImportWebTest(unittest.TestCase):
         return urlopen(base + '/ask', data=urlencode({'question': question}).encode(), timeout=60).read().decode()
 
     def test_folder_of_originals_is_imported_at_start(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        # On Windows the venv launcher's child may hold the log a moment after terminate().
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             root = Path(tmp); originals = root / 'originals'; (originals / 'нормы').mkdir(parents=True)
             write_pdf(originals / 'нормы' / 'support.pdf', SUPPORT_PAGES)
             trip = write_docx(root / 'trip.docx', trip_docx_paragraphs())
@@ -83,7 +84,8 @@ class AutoImportWebTest(unittest.TestCase):
             self.assertIn('unchanged 2', second)
 
     def test_empty_folder_gives_refusal_not_failure(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        # On Windows the venv launcher's child may hold the log a moment after terminate().
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
             root = Path(tmp); (root / 'originals').mkdir()
             env = dict(os.environ, NAVIGATOR_DB=str(root / 'index' / 'db.sqlite3'),
                        NAVIGATOR_IMPORT_DIR=str(root / 'originals'), HOST='127.0.0.1', PORT=str(free_port()))

@@ -123,7 +123,9 @@ def render_rag(db, result, when):
     # The model fills "missing" with noise on full answers: a gap is shown only
     # when it declared the answer partial.
     if status == 'partial':
-        content += '<p>Недостаточно данных для части вопроса: ' + esc('; '.join(result['missing']) or 'см. вопрос') + '.</p>'
+        # rag.gaps keeps only a short naming of each gap; with none left the line stays generic.
+        content += ('<p>Недостаточно данных для части вопроса' + (': ' + esc('; '.join(result['missing'])) if result['missing'] else '')
+                    + '.</p>')
     if result['dropped']:
         content += ('<p>Самопроверка: ' + str(len(result['dropped'])) + ' утвержд. модели не подтверждены текстом '
                     'источников и не показаны.</p>')

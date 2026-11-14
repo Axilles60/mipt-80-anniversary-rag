@@ -1,7 +1,7 @@
 [
  {"id": "V01", "type": "fact", "question": "Сколько дней ждать рассмотрения заявки отделом закупок?", "expected": ["PRC-2.3"], "facts": ["\\b7\\b"], "forbidden": [], "expect": "answer"},
  {"id": "V02", "type": "fact", "question": "В какой день блокируют учётку при увольнении?", "expected": ["ACC-3.1"], "facts": ["последний рабочий день"], "forbidden": [], "expect": "answer"},
- {"id": "V03", "type": "fact", "question": "Кто должен согласовать заявку на удалённый доступ?", "expected": ["ACC-2.2"], "facts": ["директор по информационным технологиям"], "forbidden": [], "expect": "answer"},
+ {"id": "V03", "type": "fact", "question": "Кто должен согласовать заявку на удалённый доступ?", "expected": ["ACC-2.2"], "facts": ["директор по информационным технологиям", "руководител\\w* подразделени"], "forbidden": [], "expect": "answer"},
  {"id": "V04", "type": "fact", "question": "Какой документ нужно сдать в бухгалтерию после командировки?", "expected": ["TRP-3.1"], "facts": ["авансов"], "forbidden": [], "expect": "answer"},
  {"id": "V05", "type": "fact", "question": "Какие сведения указываются в обращении в поддержку?", "expected": ["SUP-2.2"], "facts": ["кабинет|телефон"], "forbidden": [], "expect": "answer"},
  {"id": "V06", "type": "fact", "question": "Кому подаётся заявление о работе из дома?", "expected": ["REM-2"], "facts": ["руководител"], "forbidden": [], "expect": "answer"},

@@ -105,22 +105,27 @@ class ServerModel:
     """
     def __init__(self, url):
         from urllib.parse import urlsplit
-        host = urlsplit(url).hostname or ''
+        parts = urlsplit(url)
+        host = parts.hostname or ''
         local_service = re.fullmatch(r'[a-z][a-z0-9-]*', host) is not None
+        if parts.scheme not in ('http', 'https') or parts.username or parts.password:
+            raise ValueError('NAVIGATOR_LLM_URL must be http(s)://host:port without a user name or password')
         if host not in ('127.0.0.1', 'localhost', '::1') and not local_service:
             raise ValueError('NAVIGATOR_LLM_URL must point to this machine (127.0.0.1/localhost) '
                              'or to a local container by its single-label name (e.g. http://llm:8080)')
         self.url = url.rstrip('/') + '/v1/chat/completions'
 
     def complete(self, messages, schema=None, max_tokens=MAX_ANSWER_TOKENS):
-        from urllib.request import Request, urlopen
+        from urllib.request import ProxyHandler, Request, build_opener
         # cache_prompt off: reusing a cached prefix changes the arithmetic slightly,
         # so the same question could get a different answer from run to run.
         body = json.dumps({'messages': messages, 'temperature': 0, 'max_tokens': max_tokens, 'cache_prompt': False,
                            'response_format': {'type': 'json_schema',
                                                'json_schema': {'name': 'answer', 'schema': schema or SCHEMA}}}).encode()
         request = Request(self.url, data=body, headers={'Content-Type': 'application/json'})
-        with urlopen(request, timeout=300) as response:
+        # No proxy from the environment (HTTP_PROXY): the request carries document text and
+        # must go straight to the local server (external audit of d23f0fc).
+        with build_opener(ProxyHandler({})).open(request, timeout=300) as response:
             out = json.loads(response.read().decode('utf-8'))
         return out['choices'][0]['message']['content']
 
@@ -552,6 +557,40 @@ def without_absence(text, cited_texts):
     return ' '.join(keep).strip()
 
 
+# Words of a gap that say «missing», not what is missing.
+GAP_WORDS = ('указан', 'привед', 'отсутств', 'информац', 'данн', 'сведен', 'уточнен', 'документ', 'фрагмент',
+             'содерж', 'упомин', 'определ', 'предусм', 'является', 'вопрос')
+GAP_MAX_WORDS = 20
+GAP_MAX = 3
+
+
+def gaps(missing, kept):
+    """What the answer lacks, as the model named it, without what it may not say there.
+
+    The «no data for part of the question» line is free text no citation backs, so
+    (external audit of d23f0fc) only a short naming of the gap is shown: its first
+    sentence without examples in brackets; no numbers, codes, addresses or references
+    to fragments (a fact stated there would be unchecked — «телефон 2-31-00» in a gap);
+    nothing that repeats a shown statement («кабинет не указан» beside «кабинет — 310»).
+    """
+    from .stemming import query_stems
+    shown = [set(query_stems(item['text'])) for item in kept]
+    out = []
+    for entry in missing or []:
+        for part in re.split(r';\s+', str(entry)):
+            text = re.split(r'(?<=[.!?])\s+', re.sub(r'\s*\([^()]*\)', '', part).strip())[0].strip(' .;')
+            if (len(text.split()) < 2 or re.match(r'см\b', text, re.I) or CLAIM_TOKENS.search(text)
+                    or FRAGMENT_REF.search(text) or re.search(r'фрагмент|№', text, re.I) or len(text.split()) > GAP_MAX_WORDS):
+                continue
+            stems = [s for s in query_stems(text) if not s.startswith(GAP_WORDS)]
+            if stems and any(sum(1 for s in stems if any(h.startswith(s[:5]) for h in have)) / len(stems) >= 0.6
+                             for have in shown):
+                continue
+            if text not in out:
+                out.append(text)
+    return out[:GAP_MAX]
+
+
 def verify(raw, chunks, question='', judge=None):
     """Keep statements whose cited chunks support them; report what was dropped.
 
@@ -654,7 +693,7 @@ def answer(db, question, when=None, deadline=None):
         c['header'] = headers.get((c['source_id'], c['version']), '')
     kept, dropped, short = verify(content, chunks, question, judge=lambda q, w, f: same_subject(model, q, w, f))
     result = {'status': status, 'short_answer': short, 'items': kept, 'dropped': dropped,
-              'missing': [str(m) for m in content.get('missing') or [] if str(m).strip()],
+              'missing': gaps(content.get('missing'), kept),
               'headers': headers, 'seconds': round(time.perf_counter() - started, 2)}
     if status in ('answer', 'partial') and not kept:
         # Nothing the model said is supported by the cited text: «no data». The
