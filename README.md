@@ -26,6 +26,23 @@ Windows PowerShell: `docker run --rm --name employee-navigator -p 127.0.0.1:8000
 
 **Гибридный поиск (необязательно).** `docker build --build-arg WITH_DENSE=1 --build-arg RETRIEVAL=hybrid -t employee-navigator:hybrid .` — при сборке скачивается открытая модель `multilingual-e5-small` (ONNX, ≈490 МБ) с проверкой контрольных сумм (`tools/fetch_model.py`); при старте фрагменты кодируются локально. Без этого — BM25.
 
+**Ответ генератором RAG (рекомендуемая конфигурация, необязательно).**
+
+```sh
+docker build --build-arg WITH_RAG=1 --build-arg PIPELINE=rag --build-arg RETRIEVAL=hybrid -t employee-navigator:rag .
+```
+
+При сборке:
+- `llama-cpp-python` компилируется в отдельной стадии (нужен интернет, 5–10 мин);
+- скачиваются с проверкой SHA-256 три модели:
+  - `multilingual-e5-small` — ≈490 МБ;
+  - cross-encoder `bge-reranker-v2-m3` int8 — ≈570 МБ, Apache-2.0;
+  - генератор `Qwen2.5-3B-Instruct` q4_k_m — ≈2.1 ГБ, Qwen Research License: проверьте условия до коммерческого использования.
+
+Всё работает на CPU внутри контейнера. Ответ — около 20 с; нужно ≈4 ГБ ОЗУ и ≈6 ГБ диска. Запуск тот же, с тегом `employee-navigator:rag`. Если модель недоступна, сервис отвечает извлекающим конвейером.
+
+Качество на вымышленном золотом наборе — в разделе «Ответ генератором (RAG)» ниже и в [журнале](sdd/quality-progress.md). Сборка этого варианта в данной среде не проверялась.
+
 Проверки внутри образа: `docker run --rm --network none --entrypoint python employee-navigator -m unittest discover -s tests -v`; учебный каталог и вымышленная фикстура для показа без реальных документов: `import-fixture`, `load-evidence fixtures/evidence/synthetic.json` (используйте отдельную папку индекса: `load-evidence` заменяет каталог).
 ### Локальный импорт для владельца данных
 

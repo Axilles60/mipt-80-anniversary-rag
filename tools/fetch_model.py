@@ -4,12 +4,14 @@ Run once with network access — during `docker build` or by hand. Only public
 model files are downloaded, pinned to a revision; no document or question is
 sent anywhere. The service itself never downloads anything.
 
-  python tools/fetch_model.py [e5|reranker] [TARGET_DIR]
+  python tools/fetch_model.py [e5|reranker|qwen] [TARGET_DIR]
   python tools/fetch_model.py [TARGET_DIR]          (e5, as before)
 
 e5        intfloat/multilingual-e5-small, ONNX     -> data/models/multilingual-e5-small
 reranker  BAAI/bge-reranker-v2-m3, ONNX int8        -> data/models/bge-reranker-v2-m3
           (onnx-community conversion, Apache-2.0)
+qwen      Qwen/Qwen2.5-3B-Instruct-GGUF, q4_k_m      -> data/models/qwen2.5-3b-instruct
+          (Qwen Research License: check the terms before commercial use)
 """
 import hashlib
 from pathlib import Path
@@ -24,6 +26,7 @@ E5_FILES = {
     'config.json': (653, 'bbb7c1333fc4b3e27fbc9cd5d2070aabcc1d4dfb99917c3633e772f97545a6b6'),
 }
 RERANKER = 'https://huggingface.co/onnx-community/bge-reranker-v2-m3-ONNX/resolve/6f5ff65298512715a1e669753bc754d2bc8f367b/'
+QWEN = 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/7dabda4d13d513e3e842b20f0d435c732f172cbe/'
 MODELS = {
     # name: (default target, {local name: (url, size, sha256)})
     'e5': ('data/models/multilingual-e5-small',
@@ -38,6 +41,10 @@ MODELS = {
                                   'b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80'),
         'config.json': (RERANKER + 'config.json', 848,
                         '122e922dcfed6503c8721e6fe1daf090340c3d95ca7f3aa3a72730b321a51cfd'),
+    }),
+    'qwen': ('data/models/qwen2.5-3b-instruct', {
+        'qwen2.5-3b-instruct-q4_k_m.gguf': (QWEN + 'qwen2.5-3b-instruct-q4_k_m.gguf', 2104932768,
+                                            '626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d'),
     }),
 }
 

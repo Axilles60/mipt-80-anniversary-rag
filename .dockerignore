@@ -2,6 +2,7 @@
 !Dockerfile
 !requirements.txt
 !requirements-dense.txt
+!requirements-rag.txt
 !tools/
 !tools/**
 !app/

@@ -1,0 +1,6 @@
+# Optional: RAG answer with a local generator (NAVIGATOR_PIPELINE=rag).
+# Also needs requirements-dense.txt (embeddings, cross-encoder). On PyPI this
+# package is a source distribution: building needs a C/C++ compiler and cmake
+# (the Dockerfile builds it in a separate stage). Without it RAG falls back to
+# the extractive answer.
+llama-cpp-python==0.3.36
