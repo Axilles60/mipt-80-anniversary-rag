@@ -350,7 +350,9 @@ def render_rag(db, result, when):
             return ''.join(cite(cid) for cid in cells)
         return cite(chunk['fragment_id'], {'start': chunk['start'], 'end': chunk['end']})
     for item in result['items']:
-        content += '<li>' + esc(item['text']) + ''.join(links(c) for c in item['chunks']) + '</li>'
+        # A false premise of the question: the document's own sentence, quoted (rag.premise_corrections).
+        text = ('Поправка к вопросу. В документе: «' + item['text'] + '»') if item.get('premise') else item['text']
+        content += '<li>' + esc(text) + ''.join(links(c) for c in item['chunks']) + '</li>'
     content += '</ol>'
     # The model fills "missing" with noise on full answers: a gap is shown only
     # when it declared the answer partial.

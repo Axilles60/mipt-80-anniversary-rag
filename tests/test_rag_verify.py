@@ -286,6 +286,41 @@ class AuditProbeTest(unittest.TestCase):
                             '1.1. Закупка стоимостью до 100 тысяч условных единиц проводится у единственного поставщика.'))
 
 
+class PremiseTest(unittest.TestCase):
+    """A false premise is corrected by the document's own sentence, nothing generated."""
+    PER_DIEM = {'id': 'a', 'text': '2.1. Суточные выплачиваются в размере 700 условных единиц за каждый день командировки.'}
+    HALL = {'id': 'b', 'text': '4. КЗ вмещает не более 120 участников; при большем числе заявка не рассматривается.',
+            'meta': {'document': 'ПОРЯДОК бронирования конференц-зала'}}
+    REPORT = {'id': 'c', 'text': '3.1. Работник сдаёт авансовый отчёт в бухгалтерию в течение 3 рабочих дней со дня возвращения.'}
+    CERT = {'id': 'd', 'text': '2.1. Копию удостоверения сдают в отдел кадров в течение 10 рабочих дней.'}
+    TRAINING = {'id': 'e', 'text': '1.3. Обучение стоимостью свыше 50 тысяч условных единиц согласует комиссия по обучению.'}
+
+    def texts(self, question, chunks, shown=''):
+        return [c['text'] for c in rag.premise_corrections(question, chunks, shown)]
+
+    def test_wrong_value_is_corrected(self):
+        self.assertEqual(self.texts('Почему суточные в командировке 1000 условных единиц?', [self.PER_DIEM]),
+                         ['Суточные выплачиваются в размере 700 условных единиц за каждый день командировки.'])
+
+    def test_limit_exceeded_with_subject_in_title(self):
+        self.assertEqual(self.texts('Как заказать конференц-зал на 200 человек?', [self.HALL]), ['КЗ вмещает не более 120 участников'])
+        self.assertEqual(self.texts('Конференц-зал на 80 человек — как забронировать?', [self.HALL]), [])
+
+    def test_value_of_another_subject_does_not_support_the_premise(self):
+        # V26: «10 рабочих дней» is the certificate's term, not the expense report's.
+        self.assertTrue(self.texts('Почему авансовый отчёт сдают за 10 рабочих дней?', [self.REPORT, self.CERT]))
+
+    def test_amount_as_a_condition_is_not_a_premise(self):
+        # T55: «30 тысяч» is the case asked about; «свыше 50 тысяч» says when another rule applies.
+        self.assertEqual(self.texts('Кто решает об оплате курса стоимостью 30 тысяч условных единиц?', [self.TRAINING]), [])
+
+    def test_answer_that_already_corrects_is_left_alone(self):
+        self.assertEqual(self.texts('Почему суточные 1000 условных единиц?', [self.PER_DIEM], 'Суточные — 700 условных единиц.'), [])
+
+    def test_true_premise_is_left_alone(self):
+        self.assertEqual(self.texts('Почему суточные 700 условных единиц?', [self.PER_DIEM]), [])
+
+
 class GapTest(unittest.TestCase):
     """The «no data for part of the question» line: a short naming of the gap only."""
     KEPT = [{'text': 'Кабинет Отдела закупок — 310.'}]
