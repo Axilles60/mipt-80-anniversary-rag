@@ -16,6 +16,7 @@ from urllib.parse import urlencode
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'eval')]
 from app import history, rag  # noqa: E402
+from app.__main__ import decorate, imported_documents, ref_label, render_documents  # noqa: E402
 from synthetic_docs import SUPPORT_PAGES, write_pdf  # noqa: E402
 
 
@@ -75,6 +76,47 @@ class HistoryTest(unittest.TestCase):
         self.assertEqual(text, 'Кабинет 310.')
 
 
+class PageTest(unittest.TestCase):
+    def test_locator_labels(self):
+        self.assertEqual(ref_label('F@v#page/2/text-layer'), 'стр. 2')
+        self.assertEqual(ref_label('F@v#page/2/text-layer', 'Раздел', '3.2. Срок обработки'), 'стр. 2, п. 3.2')
+        self.assertEqual(ref_label('F@v#body/3/paragraph', 'Текст без номера'), 'абзац 3')
+        self.assertEqual(ref_label('F@v#body/3/paragraph', '3.1. Заявку подписывает'), 'п. 3.1')
+        self.assertEqual(ref_label('F@v#body/7/paragraph', '4. Отпуск'), 'п. 4')
+        self.assertEqual(ref_label('F@v#sheet/Справочник/cell/C5'), 'лист «Справочник», строка 5')
+        self.assertEqual(ref_label('F@v#body/3/table/row/2'), 'таблица, строка 2')
+        self.assertEqual(ref_label('SYN-SUPPORT-v1-p3'), 'SYN-SUPPORT-v1-p3')
+
+    def test_citation_keeps_href_and_shows_a_label(self):
+        link = '<li>Кабинет 310. <a href="/fragment?id=F%40v%23page%2F2%2Ftext-layer&amp;at=1-5">F@v#page/2/text-layer</a></li>'
+        out = decorate(link)
+        self.assertIn('<a href="/fragment?id=F%40v%23page%2F2%2Ftext-layer&amp;at=1-5" class="ref"', out)
+        self.assertIn('title="F@v#page/2/text-layer">стр. 2</a>', out)
+        self.assertIn('<p class="n-src">Источник:', decorate('<p>Источник: x.</p>'))
+
+    def test_cells_of_one_row_are_one_label_and_documents_are_named(self):
+        db = sqlite3.connect(':memory:'); db.row_factory = sqlite3.Row
+        db.execute('CREATE TABLE imports (source_id TEXT, version TEXT, filename TEXT)')
+        db.execute('CREATE TABLE import_fragments (id TEXT, source_id TEXT, version TEXT, locator TEXT, text TEXT, metadata TEXT)')
+        db.executemany('INSERT INTO imports VALUES (?,?,?)', [('S1', 'v1', 'Справочник телефонов.xlsx'), ('S2', 'v2', 'procurement.pdf')])
+        rows = [('S1@v1#sheet/Справочник/cell/A5', 'S1', 'v1', 'sheet/Справочник/cell/A5', 'Справочник A5 Отдел кадров'),
+                ('S1@v1#sheet/Справочник/cell/C5', 'S1', 'v1', 'sheet/Справочник/cell/C5', 'Справочник C5 310'),
+                ('S2@v2#page/1/text-layer', 'S2', 'v2', 'page/1/text-layer', 'ПОРЯДОК закупок малого объёма (учебный)\n1.1. Текст')]
+        db.executemany('INSERT INTO import_fragments VALUES (?,?,?,?,?,"{}")', rows)
+        a = lambda fid: '<a href="/fragment?id=' + fid + '">' + fid + '</a>'
+        out = decorate('<ol><li>Отдел кадров, кабинет 310. ' + a(rows[0][0]) + ' ' + a(rows[1][0]) + '</li>'
+                       '<li>Закупки. ' + a(rows[2][0]) + '</li></ol>', db)
+        self.assertEqual(out.count('<a href='), 3)                     # every link stays
+        self.assertIn('>Справочник телефонов, лист «Справочник», строка 5</a>', out)
+        self.assertEqual(out.count('class="ref same"'), 1)              # the second cell of the row is hidden
+        self.assertIn('>Порядок закупок малого объёма, стр. 1</a>', out)
+
+    def test_documents_of_an_empty_base(self):
+        db = sqlite3.connect(':memory:'); db.row_factory = sqlite3.Row
+        self.assertEqual(imported_documents(db), [])
+        self.assertIn('Документы ещё не загружены', render_documents([]))
+
+
 def free_port():
     with socket.socket() as s:
         s.bind(('127.0.0.1', 0)); return s.getsockname()[1]
@@ -119,6 +161,7 @@ class ChatWebTest(unittest.TestCase):
                 self.assertIn('class="turn"', page)
                 self.assertIn('Не работает принтер, куда обратиться?', page)
                 self.assertIn('portal.example.invalid/support', page)
+                self.assertIn('href="/documents"', page)
                 with closing(sqlite3.connect(root / 'db.sqlite3')) as db:
                     self.assertEqual(db.execute('SELECT COUNT(*) FROM chat_turns').fetchone()[0], 1)
                 # Another browser does not see it; «clear» empties this one.
@@ -127,6 +170,12 @@ class ChatWebTest(unittest.TestCase):
                 self.request('POST', '/clear', {}, cookie)
                 _, _, page = self.request('GET', '/', cookie=cookie)
                 self.assertNotIn('class="turn"', page)
+                # The list of searchable documents links each one to its first fragment.
+                status, _, page = self.request('GET', '/documents')
+                self.assertEqual(status, 200)
+                self.assertIn('Документы в базе', page)
+                self.assertIn('support.pdf', page)
+                self.assertIn('href="/fragment?id=', page)
             finally:
                 server.terminate(); server.wait(timeout=10)
 

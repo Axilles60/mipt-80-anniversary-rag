@@ -10,20 +10,235 @@ from urllib.parse import parse_qs, quote, urlparse
 from .core import DEFAULT_DB, connect, connect_existing, form_answer, import_fixture, imported_parts
 from . import history
 
-STYLE = ('<style>:root{color-scheme:light dark;--bg:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#e3e3e8;--q:#eef3ff;--accent:#2557d6}'
-         '@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececf0;--muted:#a0a0a8;--line:#2c2c31;--q:#1e2740;--accent:#7aa2ff}}'
-         'body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;'
-         'max-width:860px;margin:0 auto;padding:16px}h1{font-size:1.4rem;margin:.2rem 0 1rem}h2{font-size:1.1rem}'
-         'h3{font-size:1rem;font-weight:600}a{color:var(--accent)}.turn{border-bottom:1px solid var(--line);padding:12px 0}'
-         '.q{background:var(--q);border-radius:12px;padding:8px 12px;display:inline-block;font-weight:600}'
-         '.as{color:var(--muted);font-size:.9rem;margin:4px 0}.a{margin-top:6px}.hint,.note{color:var(--muted)}'
-         '.note{font-size:.85rem}form.ask{display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;'
-         'background:var(--bg);padding:12px 0;border-top:1px solid var(--line)}form.ask input[name=question]{flex:1 1 320px;'
-         'font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)}'
-         '.date{color:var(--muted);font-size:.9rem;display:flex;align-items:center;gap:6px}'
-         'button{font:inherit;padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}'
-         'button.secondary{background:transparent;color:var(--accent);border:1px solid var(--line);padding:6px 12px}'
-         '.actions{display:flex;gap:8px;margin-top:8px}.actions form{margin:0}</style>')
+# One inline stylesheet for every page: the service runs offline, so only system fonts.
+# Reading column ~70 characters; light and dark themes follow the system setting.
+CSS = '''
+:root{color-scheme:light dark;
+ --bg:#f6f5f1;--surface:#fff;--fg:#1c1f24;--muted:#5a616c;--line:#e0ddd4;--line-strong:#c2beb2;
+ --accent:#1b5a8a;--accent-hover:#134468;--accent-ink:#fff;--accent-soft:#e1eaf2;
+ --q:#eae8e1;--limit:#f6efdc;--limit-line:#e2d4a8;--gap:#ecedef;--mark:#fae38f;
+ --shadow:rgba(28,31,36,.14)}
+@media (prefers-color-scheme:dark){:root{
+ --bg:#141619;--surface:#1b1e22;--fg:#e6e4df;--muted:#a2a8b1;--line:#2b2f35;--line-strong:#434852;
+ --accent:#8db9e4;--accent-hover:#b1d0ee;--accent-ink:#0e1822;--accent-soft:#1e2b38;
+ --q:#23272c;--limit:#29251a;--limit-line:#4b432a;--gap:#22262b;--mark:#6a5413;
+ --shadow:rgba(0,0,0,.5)}}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scrollbar-color:var(--line-strong) var(--bg)}
+body{margin:0;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);
+ font:1rem/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+ caret-color:var(--accent);accent-color:var(--accent)}
+::selection{background:var(--accent-soft);color:var(--fg)}
+a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:.2em}
+a:hover{color:var(--accent-hover)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{border-bottom:1px solid var(--line)}
+.bar,.wrap{width:100%;max-width:46rem;margin:0 auto;padding-inline:16px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:56px}
+h1{margin:0;font-size:1rem;line-height:1.3;font-weight:650}
+h1 a{color:var(--fg);text-decoration:none}
+.bar nav a{color:var(--muted);font-size:.9375rem;text-decoration:none;padding:8px 0}
+.bar nav a:hover,.bar nav a[aria-current]{color:var(--fg)}
+.wrap{flex:1;padding-block:24px 40px;overflow-wrap:anywhere}
+h2{margin:1.75em 0 .5em;font-size:1.125rem;line-height:1.35;font-weight:650;text-wrap:balance}
+h3{margin:1.25em 0 .4em;font-size:1.0625rem;line-height:1.45;font-weight:600;text-wrap:balance}
+h4{margin:1.4em 0 .3em;font-size:.9375rem;line-height:1.4;font-weight:600;color:var(--muted)}
+h5{margin:1em 0 .25em;font-size:.875rem;font-weight:600;color:var(--muted)}
+.wrap>h2:first-child,.back+h2,.a>h2:first-child,.empty>h2:first-child{margin-top:0}
+.back+h2,.empty>h2{font-size:1.375rem;line-height:1.3}
+p,ol,ul{margin:.6em 0}
+ol,ul{padding-left:1.5em}
+li{margin:.45em 0;padding-left:.2em}
+li::marker{color:var(--muted);font-variant-numeric:tabular-nums}
+.wrap p,.wrap li{white-space:pre-line;hyphens:auto}
+em{color:var(--muted)}
+.n-src,.n-meta{color:var(--muted);font-size:.875rem;line-height:1.5}
+.n-src{margin-top:1.25em}
+.n-src+.n-src,.n-meta+.n-meta,.n-src+.n-meta{margin-top:.3em}
+p.n-limit,p.n-gap,p.n-fix{padding:.6em .85em;border-radius:8px}
+p.n-limit{background:var(--limit);border:1px solid var(--limit-line);font-size:.9375rem}
+p.n-gap,p.n-fix{background:var(--gap)}
+a.ref{margin-left:.1em;padding:.05em .5em;border-radius:6px;background:var(--accent-soft);color:var(--accent);
+ font-size:.8125rem;line-height:1.5;font-weight:500;text-decoration:none;font-variant-numeric:tabular-nums;
+ -webkit-box-decoration-break:clone;box-decoration-break:clone;hyphens:none}
+a.ref:hover{background:var(--accent);color:var(--accent-ink)}
+a.ref.same{display:none}
+.dialog{flex:1}
+.empty{padding:8px 0 24px;max-width:38rem}
+.empty p{color:var(--muted)}
+.tools{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 20px;margin:-8px 0 8px}
+.tools form{margin:0}
+.turn{padding:28px 0;border-top:1px solid var(--line);scroll-margin-top:12px}
+.turn:first-child,.tools+.turn{border-top:0;padding-top:4px}
+.wrap.chat{display:flex;flex-direction:column}
+.q{width:fit-content;max-width:min(34rem,88%);margin-left:auto;padding:.6rem .95rem;border-radius:14px 14px 4px 14px;
+ background:var(--q);font-weight:550;line-height:1.5;white-space:pre-line}
+.as{max-width:min(34rem,88%);margin:.4rem 0 0 auto;color:var(--muted);font-size:.875rem;text-align:right}
+.a{margin-top:1.1rem;font-size:1.0625rem;line-height:1.65}
+.a h2:first-child{font-size:.9375rem;color:var(--muted);font-weight:600}
+.a h3{font-size:1.125rem}
+.after{margin:1rem 0 0;color:var(--muted);font-size:.875rem}
+input,button{font:inherit}
+input[type=text],input:not([type]),input[type=date]{min-height:44px;padding:.55rem .8rem;border:1px solid var(--line-strong);border-radius:10px;
+ background:var(--surface);color:var(--fg)}
+input:hover{border-color:var(--muted)}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+::placeholder{color:var(--muted);opacity:1}
+button{min-height:44px;padding:0 1.15rem;border:0;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-weight:600;cursor:pointer}
+button:hover{background:var(--accent-hover)}
+button:disabled{opacity:.7;cursor:progress}
+button.secondary{min-height:36px;padding:4px 0;background:none;color:var(--muted);font-size:.875rem;font-weight:500;
+ text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:.25em}
+button.secondary:hover{color:var(--fg);text-decoration-color:currentColor}
+form.ask{position:sticky;bottom:0;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center;
+ margin:16px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--bg);
+ border-top:1px solid var(--line);box-shadow:0 -8px 16px -14px var(--shadow)}
+form.ask input[name=question]{width:100%;min-width:0}
+.date{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.875rem;white-space:nowrap}
+.date input{font-size:.875rem;padding-inline:.5rem}
+.meta{margin:12px 0 0;color:var(--muted);font-size:.8125rem;line-height:1.5}
+form.plain{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:0 0 24px;padding:16px;
+ background:var(--surface);border:1px solid var(--line);border-radius:12px}
+form.plain label{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:.875rem}
+form.plain label:first-child{flex:1 1 18rem}
+form.plain input{color:var(--fg);font-size:1rem}
+.back{margin:0 0 20px;font-size:.9375rem}
+.ver{color:var(--muted);font-size:.8125rem;line-height:1.5}
+.frag div,.frag>p:not(.back):not(.ver){padding:.85rem 0;border-top:1px solid var(--line);margin:0}
+.frag div p{margin:0}
+.frag div p+p{margin-top:.4em;color:var(--muted);font-size:.875rem}
+.frag strong{display:block;margin-bottom:.15rem;color:var(--muted);font-size:.75rem;font-weight:500;font-variant-numeric:tabular-nums}
+.frag #selected{margin-inline:-12px;padding-inline:12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface)}
+.frag #selected+div,.frag #selected+p{border-top-color:transparent}
+.frag #selected strong{color:var(--accent)}
+mark{padding:0 .1em;border-radius:3px;background:var(--mark);color:inherit;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.lead{color:var(--muted)}
+ol.docs{list-style:none;padding:0;margin:20px 0 0}
+ol.docs li{margin:0;padding:.85rem 0;border-top:1px solid var(--line)}
+a.doc{font-weight:600;text-decoration:none}
+a.doc:hover{text-decoration:underline}
+.doc-meta{display:block;margin-top:.15rem;color:var(--muted);font-size:.875rem}
+@media (max-width:600px){
+ .wrap{padding-block:16px 32px}
+ form.ask{grid-template-columns:minmax(0,1fr) auto}
+ form.ask input[name=question]{grid-column:1/-1}
+ .q,.as{max-width:94%}
+ .a{font-size:1rem}
+}
+'''
+STYLE = '<style>' + re.sub(r'\s*\n\s*', '', CSS.strip()) + '</style>'
+
+# Service lines of the answers (written by the renderers as the start of a <p>/<li>) get a
+# class for styling; the text and the elements themselves stay as rendered.
+SERVICE_CLASSES = (('Источник:', 'n-src'), ('Ограничение:', 'n-limit'), ('Недостаточно данных', 'n-gap'),
+                   ('Вопрос не относится', 'n-gap'), ('Применимость', 'n-meta'), ('Самопроверка', 'n-meta'),
+                   ('Поправка к вопросу', 'n-fix'))
+SERVICE_LINE = re.compile(r'<(p|li)>(' + '|'.join(re.escape(prefix) for prefix, _ in SERVICE_CLASSES) + ')')
+# A citation as cite() writes it (href and the full fragment ID as text); the page shows
+# a readable label instead and keeps the ID in the title.
+CITATION = re.compile(r'<a href="(/fragment\?id=[^"]*)">([^<]*)</a>')
+POINT = re.compile(r'\s*(\d{1,3}(?:\.\d{1,3})*)\.(?=\s|$)')     # «3.1. Текст» → 3.1
+SMALL_WORDS = {'о', 'об', 'по', 'и', 'в', 'во', 'на', 'для', 'с', 'со', 'к', 'от', 'при'}
+
+def ref_label(fragment_id, text=None, unit=None, cell=False):
+    """The cited place in words: «стр. 2», «п. 3.1», «абзац 4», «таблица, строка 2»,
+    «лист «Справочник», строка 5». ``text`` is the fragment text, ``unit`` the cited part
+    of it; a point number at their start names the place more precisely."""
+    locator = fragment_id.split('#', 1)[1] if '#' in fragment_id else ''
+    parts = locator.split('/')
+    point = POINT.match(unit or '') or (POINT.match(text or '') if parts[0] == 'body' else None)
+    if parts[0] == 'page' and len(parts) > 1 and parts[1].isdigit():
+        return 'стр. ' + parts[1] + (', п. ' + point.group(1) if point else '')
+    if parts[0] == 'sheet' and len(parts) >= 4 and parts[-2] == 'cell':
+        row = re.sub(r'^[A-Za-z]+', '', parts[-1])
+        place = ('ячейка ' + parts[-1]) if cell or not row.isdigit() else ('строка ' + row)
+        return 'лист «' + parts[1] + '», ' + place
+    if 'table' in parts and 'row' in parts[:-1]:
+        return 'таблица, строка ' + parts[parts.index('row') + 1]
+    if point:
+        return 'п. ' + point.group(1)
+    if parts[0] == 'body' and len(parts) > 1 and parts[1].isdigit():
+        return 'абзац ' + parts[1]
+    if not locator and 0 < len(fragment_id) <= 24:
+        return fragment_id                      # fixture IDs are short and readable
+    return 'фрагмент'
+
+def document_info(db, source_id, version, cache=None):
+    """Human names of an imported version: title, short name, requisites label, file name."""
+    key = (source_id, version)
+    if cache is not None and key in cache:
+        return cache[key]
+    row = db.execute('SELECT filename FROM imports WHERE source_id=? AND version=?', key).fetchone()
+    filename = row['filename'] if row else ''
+    first = db.execute('SELECT id, locator, text FROM import_fragments WHERE source_id=? AND version=? ORDER BY rowid LIMIT 2',
+                       key).fetchall()
+    from .requisites import requisites, label
+    try:
+        data = requisites(db, source_id, version)
+    except (sqlite3.Error, ValueError, KeyError, TypeError):
+        data = {}
+    title = document_title(filename, first)
+    stem = re.sub(r'\.[A-Za-z0-9]{2,5}$', '', filename) or filename
+    if first and first[0]['locator'].startswith('sheet/'):
+        short = stem
+    elif re.match(r'Об?\s', title) and data.get('kind') and data.get('number'):
+        short = data['kind'].capitalize() + ' № ' + data['number']     # «Об утверждении…» → «Приказ № 41-1»
+    else:
+        words = re.sub(r'\s*\([^)]*\)', '', title).split()[:4]
+        while len(words) > 1 and words[-1].lower() in SMALL_WORDS:
+            words.pop()
+        short = ' '.join(words) or stem
+    info = {'title': title, 'short': short, 'label': label(data) if data else None, 'filename': filename,
+            'first': first[0]['id'] if first else None}
+    if cache is not None:
+        cache[key] = info
+    return info
+
+def label_citations(content, db=None):
+    """Readable link text for the citations of one answer. With citations of more than
+    one document each label starts with the document's short name. Several cells of one
+    sheet row are one place: the repeated links stay (as hidden duplicates)."""
+    found = CITATION.findall(content)
+    if not found:
+        return content
+    rows, cache = {}, {}
+    if db is not None:
+        try:
+            ids = list(dict.fromkeys(html.unescape(text) for _, text in found))
+            for chunk in range(0, len(ids), 500):
+                part = ids[chunk:chunk + 500]
+                for r in db.execute('SELECT id, source_id, version, text FROM import_fragments WHERE id IN (%s)'
+                                    % ','.join('?' * len(part)), part):
+                    rows[r['id']] = r
+        except sqlite3.Error:
+            rows = {}
+    several = len({r['source_id'] for r in rows.values()}) > 1
+    previous = {'end': -1, 'label': None}
+    def citation(m):
+        href, fid = m.group(1), html.unescape(m.group(2))
+        row = rows.get(fid)
+        unit = None
+        at = re.search(r'&amp;at=(\d+)-(\d+)', href)
+        if row and at and int(at.group(1)) < int(at.group(2)) <= len(row['text']):
+            unit = row['text'][int(at.group(1)):int(at.group(2))]
+        label = ref_label(fid, row['text'] if row else None, unit)
+        if several and row:
+            try:
+                label = document_info(db, row['source_id'], row['version'], cache)['short'] + ', ' + label
+            except sqlite3.Error:
+                pass
+        same = label == previous['label'] and not content[previous['end']:m.start()].strip()
+        previous.update(end=m.end(), label=label)
+        return ('<a href="' + href + '" class="ref' + (' same' if same else '') + '" title="' + m.group(2) + '">'
+                + esc(label) + '</a>')
+    return CITATION.sub(citation, content)
+
+def decorate(content, db=None):
+    """Classes for the service lines and readable citation labels."""
+    def service(m):
+        cls = next(c for prefix, c in SERVICE_CLASSES if prefix == m.group(2))
+        return '<' + m.group(1) + ' class="' + cls + '">' + m.group(2)
+    return label_citations(SERVICE_LINE.sub(service, content), db)
 
 DB = os.environ.get('NAVIGATOR_DB', DEFAULT_DB)
 
@@ -66,7 +281,8 @@ def render_import_fragment(row, selected, at=None):
         headers += '<p>Заголовки определены предположительно; требуется сверка.</p>'
     if metadata.get('formula') is not None:
         headers += '<p>Формула: ' + esc(metadata['formula']) + '; сохранённое значение: ' + esc(metadata.get('cached_value') if metadata.get('cached_value') is not None else 'отсутствует') + '</p>'
-    return '<div' + (' id="selected"' if selected else '') + '><p><strong>' + esc(row['locator']) + '</strong> ' + highlighted(row['text'], at if selected else None) + ''.join(' <em>' + esc(note) + '</em>' for note in import_notes(metadata)) + '</p>' + headers + '</div>'
+    place = ref_label('#' + row['locator'], row['text'], cell=True)
+    return '<div' + (' id="selected"' if selected else '') + '><p><strong title="' + esc(row['locator']) + '">' + esc(place) + '</strong> ' + highlighted(row['text'], at if selected else None) + ''.join(' <em>' + esc(note) + '</em>' for note in import_notes(metadata)) + '</p>' + headers + '</div>'
 
 STAGE_HEADINGS = (('До поездки или события', 'до'), ('После возвращения или события', 'после'))
 
@@ -148,7 +364,10 @@ def render_rag(db, result, when):
     keys = list(dict.fromkeys((c['source_id'], c['version']) for item in result['items'] for c in item['chunks']))
     for key in keys:
         if result['headers'].get(key):
-            content += '<p>Источник: ' + esc(result['headers'][key]) + '.</p>'
+            # The heading also carries a hint for the model («…: действующий текст изменённых пунктов —
+            # во фрагментах этого приказа»); a reader needs only «изменён приказом № … с …».
+            shown = re.sub(r'(изменён приказом[^:·]*):[^·]*', r'\1', result['headers'][key])
+            content += '<p>Источник: ' + esc(shown) + '.</p>'
     from .requisites import status as version_status
     for _, (state, notes) in version_status(db, keys, when).items():
         for note, fid in notes:
@@ -157,6 +376,70 @@ def render_rag(db, result, when):
                 'моделью и проверен по цитатам; сверьте источник.</p>')
     return content
 
+# The latest imported version of each source that has text to search.
+LATEST_IMPORTS = ('SELECT i.source_id, i.version, i.filename FROM imports i '
+                  'WHERE i.rowid IN (SELECT MAX(rowid) FROM imports GROUP BY source_id) '
+                  'AND EXISTS (SELECT 1 FROM import_fragments f WHERE f.source_id=i.source_id AND f.version=i.version)')
+HEADING_ONLY = re.compile(r'[А-ЯЁA-Z]{3,}\s+(?:от|№)\s')   # «ПРИКАЗ от 20.06.2022 № 77-3»: the title follows
+
+def has_imports(db):
+    names = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    return {'imports', 'import_fragments'} <= names
+
+def document_count(db):
+    return len(db.execute(LATEST_IMPORTS).fetchall()) if has_imports(db) else 0
+
+def document_title(filename, first):
+    """The heading line of a document as written in it; a table by its sheet name; else the file name."""
+    if not first:
+        return filename
+    if first[0]['locator'].startswith('sheet/'):
+        sheet = first[0]['locator'].split('/')[1]
+        return filename if len(sheet) < 3 or re.fullmatch(r'(?i)(лист|sheet)\s*\d*', sheet) else sheet
+    line = first[0]['text'].strip().split('\n', 1)[0].strip()
+    if HEADING_ONLY.match(line) and len(first) > 1 and first[1]['locator'].startswith('body/'):
+        line = first[1]['text'].strip().split('\n', 1)[0].strip()
+    # «ПОРЯДОК закупок…» → «Порядок закупок…»; abbreviations alone are kept.
+    line = re.sub(r'^([А-ЯЁ])([А-ЯЁ]{2,})(?=\s+[а-яё])', lambda m: m.group(1) + m.group(2).lower(), line)
+    if len(line) < 4:
+        return filename
+    return line if len(line) <= 140 else line[:140].rsplit(' ', 1)[0] + '…'
+
+def imported_documents(db):
+    """Searchable documents: title, file name, requisites label and the first fragment."""
+    if not has_imports(db):
+        return []
+    docs = []
+    for row in db.execute(LATEST_IMPORTS).fetchall():
+        info = document_info(db, row['source_id'], row['version'])
+        docs.append(dict(info, fragment=info['first']))
+    return sorted(docs, key=lambda d: d['title'].casefold())
+
+def source_heading(db, row, at=None):
+    """Heading of the source page: the document in words, the selected place, no hashes.
+    The version and locator stay in data attributes for checks."""
+    info = document_info(db, row['source_id'], row['version'])
+    unit = row['text'][at[0]:at[1]] if at and 0 <= at[0] < at[1] <= len(row['text']) else None
+    meta = [info['label'], info['filename'] if info['filename'] != info['title'] else None,
+            'выбран: ' + ref_label('#' + row['locator'], row['text'], unit, cell=True)]
+    return ('<h2>' + esc(info['title']) + '</h2><p class="ver" data-version="' + esc(row['version']) + '" data-locator="'
+            + esc(row['locator']) + '">' + esc(' · '.join(x for x in meta if x)) + '</p>')
+
+def render_documents(docs):
+    content = '<h2>Документы в базе</h2>'
+    if not docs:
+        return content + '<p>Документы ещё не загружены.</p>'
+    content += ('<p class="lead">Навигатор ищет ответы только в этих документах (' + str(len(docs)) + '). '
+                'Ссылка открывает начало документа.</p><ol class="docs">')
+    for d in docs:
+        meta = [d['label'], d['filename'] if d['filename'] != d['title'] else None]
+        content += ('<li><a class="doc" href="' + fragment_href(d['fragment']) + '">' + esc(d['title']) + '</a>'
+                    + ('<span class="doc-meta">' + esc(' · '.join(x for x in meta if x)) + '</span>' if any(meta) else '') + '</li>')
+    return content + '</ol>'
+
+
+BACK = '<p class="back"><a href="/">Вернуться к вопросам</a></p>'
+
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -164,12 +447,16 @@ class Handler(BaseHTTPRequestHandler):
 
     captured = None      # a list while a dialogue turn collects its answer instead of sending it
 
-    def page(self, content, status=200, headers=()):
+    def page(self, content, status=200, headers=(), kind='', title='Навигатор сотрудника'):
         if self.captured is not None:
             self.captured.append((content, status))
             return
+        current = ' aria-current="page"' if kind == 'docs' else ''
         body = ('<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-                '<title>Навигатор</title>' + STYLE + '<body><h1>Навигатор сотрудника</h1>' + content + '</body></html>').encode()
+                '<meta name="color-scheme" content="light dark"><title>' + esc(title) + '</title>' + STYLE
+                + '<body><header class="top"><div class="bar"><h1><a href="/">Навигатор сотрудника</a></h1>'
+                '<nav><a href="/documents"' + current + '>Документы в базе</a></nav></div></header>'
+                '<main class="wrap' + (' ' + kind if kind else '') + '">' + self.labelled(content) + '</main></body></html>').encode()
         self.send_response(status)
         for name, value in headers:
             self.send_header(name, value)
@@ -178,12 +465,28 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    @staticmethod
+    def labelled(content):
+        if not CITATION.search(content):
+            return decorate(content)
+        try:
+            with closing(connect_existing(DB)) as db:
+                return decorate(content, db)
+        except (sqlite3.Error, OSError):
+            return decorate(content)
+
     def form(self, question='', chat=False):
         if chat:
             return ('<form method="post" action="/ask" class="ask"><input name="question" maxlength="2000" required '
-                    'placeholder="Ваш вопрос о регламентах" aria-label="Вопрос"><label class="date">На дату '
-                    '<input type="date" name="date"></label><button>Спросить</button></form>')
-        return '<form method="post" action="/ask"><label>Вопрос <input name="question" maxlength="2000" value="' + esc(question) + '"></label> <label>Дата <input type="date" name="date"></label> <label>Категория <input name="category"></label><button>Найти</button></form>'
+                    'autocomplete="off" enterkeyhint="send" placeholder="Вопрос по документам организации" '
+                    'aria-label="Вопрос"><label class="date" title="Необязательно: дата, на которую нужен ответ">'
+                    'На дату <input type="date" name="date"></label><button>Спросить</button></form>')
+        return '<form method="post" action="/ask" class="plain"><label>Вопрос <input name="question" maxlength="2000" value="' + esc(question) + '"></label> <label>Дата <input type="date" name="date"></label> <label>Категория <input name="category"></label><button>Найти</button></form>'
+
+    def fragment_page(self, content):
+        """A source with the cited place; the optional script brings it into view."""
+        return self.page(BACK + content + '<script>var s=document.getElementById("cited")||document.getElementById("selected");'
+                         'if(s&&!location.hash)s.scrollIntoView({block:"center"});</script>', kind='frag', title='Источник')
 
     def redirect(self, location, headers=()):
         self.send_response(303)
@@ -203,28 +506,48 @@ class Handler(BaseHTTPRequestHandler):
         if conversation is None:
             conversation = history.new_id()
             headers = (self.cookie(conversation),)
+        count = None
         try:
             with closing(connect(DB)) as db, db:
                 turns = history.turns(db, conversation)
+                count = document_count(db)
+                for t in turns:
+                    t['answer_html'] = decorate(t['answer_html'], db)
         except (sqlite3.Error, OSError):
             turns = []
-        content = '<main class="chat">'
+        docs_link = '<a href="/documents">Документы в базе</a>'
+        loaded = 'загруженным документам' + (f' ({count})' if count is not None else '')
+        content = '<div class="dialog">'
         if not turns:
-            content += ('<p class="hint">Задайте вопрос о внутренних регламентах. Можно уточнять в продолжение: '
-                        '«а для бухгалтерии?», «а где их кабинет?». Ответ собирается только из документов, '
-                        'каждое утверждение — со ссылкой на пункт.</p>')
+            content += ('<div class="empty"><h2>Спросите о правилах и порядках организации</h2>'
+                        '<p>Ответ строится только по загруженным документам, у каждого утверждения есть ссылка '
+                        'на пункт источника. Если в документах ответа нет, навигатор так и скажет.</p>'
+                        '<p>Уточнять можно в продолжение: «а для бухгалтерии?», «а где их кабинет?».</p>'
+                        f'<p>Поиск идёт только по {loaded}: {docs_link}.</p></div>')
+        else:
+            content += ('<div class="tools"><form method="post" action="/new"><button class="secondary">Новый диалог</button></form>'
+                        '<form method="post" action="/clear"><button class="secondary">Очистить историю</button></form></div>')
         for t in turns:
             content += f'<section class="turn" id="t{t["n"]}"><div class="q">{esc(t["question"])}</div>'
             if t['standalone'] != t['question']:
                 content += f'<div class="as">Понял вопрос как: {esc(t["standalone"])}</div>'
-            content += f'<div class="a">{t["answer_html"]}</div></section>'
-        content += '</main>' + self.form(chat=True)
-        content += ('<div class="actions"><form method="post" action="/new"><button class="secondary">Новый диалог</button></form>'
-                    '<form method="post" action="/clear"><button class="secondary">Очистить историю</button></form></div>'
-                    '<p class="note">История диалога хранится на сервере навигатора в его базе и никуда не передаётся.</p>')
-        content += '<script>var l=document.querySelector(".turn:last-of-type");if(l)l.scrollIntoView();'\
-                   'document.querySelector("input[name=question]").focus();</script>'
-        return self.page(content, headers=headers)
+            content += f'<div class="a">{t["answer_html"]}</div>'
+            if 'Недостаточно данных для ответа' in t['answer_html']:
+                content += (f'<p class="after">Ответ ищется только в загруженных документах. Посмотрите '
+                            f'<a href="/documents">список документов</a> или переформулируйте вопрос.</p>')
+            content += '</section>'
+        content += '</div>' + self.form(chat=True)
+        # With an empty dialogue the same line is already in the hint above.
+        content += ('<p class="meta">' + (f'Поиск идёт только по {loaded}: {docs_link}. ' if turns else '')
+                    + 'История диалога хранится на этом сервере и никуда не передаётся.</p>')
+        # Optional: the page works without it (scroll to the last answer, focus, busy button).
+        content += ('<script>var t=document.querySelectorAll(".turn"),f=document.querySelector("form.ask"),'
+                    'b=f.querySelector("button"),i=f.querySelector("input[name=question]");'
+                    'if(t.length&&!location.hash)t[t.length-1].scrollIntoView();'
+                    'if(matchMedia("(min-width:700px)").matches)i.focus({preventScroll:true});'
+                    'f.addEventListener("submit",function(){b.disabled=true;b.textContent="Ищу в документах…"});'
+                    'addEventListener("pageshow",function(){b.disabled=false;b.textContent="Спросить"});</script>')
+        return self.page(content, headers=headers, kind='chat')
 
     def chat_post(self, conversation, fields):
         """One dialogue turn: rewrite a follow-up into a self-contained question, answer it as
@@ -259,8 +582,15 @@ class Handler(BaseHTTPRequestHandler):
             if history.enabled():
                 return self.chat_page()
             return self.page(self.form())
+        if parsed.path == '/documents':
+            try:
+                with closing(connect_existing(DB)) as db, db:
+                    docs = imported_documents(db)
+            except (sqlite3.Error, OSError):
+                docs = []
+            return self.page(BACK + render_documents(docs), kind='docs', title='Документы в базе')
         if parsed.path != '/fragment':
-            return self.page('Страница не найдена', 404)
+            return self.page('<p>Страница не найдена.</p>' + BACK, 404)
         fragment_id = parse_qs(parsed.query).get('id', [''])[0]
         cited_range = None
         at = re.fullmatch(r'(\d{1,7})-(\d{1,7})', parse_qs(parsed.query).get('at', [''])[0])
@@ -286,16 +616,16 @@ class Handler(BaseHTTPRequestHandler):
                         context = [dict(r) for r in neighbours]
                         seen = {r['id'] for r in context}
                         context.extend(r for r in linked if r['id'] not in seen)
-                        content = '<h2>' + esc(imported_row['title']) + '</h2><p>Версия ' + esc(imported_row['version']) + '; выбран ' + esc(imported_row['locator']) + '</p>'
+                        content = source_heading(db, imported_row, cited_range)
                         content += ''.join(render_import_fragment(r, r['id'] == fragment_id, cited_range) for r in context)
-                        return self.page(content + '<a href="/">Новый вопрос</a>')
+                        return self.fragment_page(content)
                 try:
                     ev = db.execute('SELECT f.*, d.title FROM evidence_fragments f JOIN evidence_documents d ON d.id=f.document_id WHERE f.id=?', (fragment_id,)).fetchone()
                 except sqlite3.OperationalError:
                     ev = None
                 if ev:
                     ctx = db.execute('SELECT * FROM evidence_fragments WHERE document_id=? ORDER BY rowid', (ev['document_id'],)).fetchall()
-                    return self.page('<h2>' + esc(ev['title']) + '</h2>' + ''.join('<p><strong>' + esc(x['locator']) + '</strong> ' + esc(x['text']) + '</p>' for x in ctx))
+                    return self.fragment_page('<h2>' + esc(ev['title']) + '</h2>' + ''.join('<p' + (' id="selected"' if x['id'] == fragment_id else '') + '><strong>' + esc(x['locator']) + '</strong> ' + esc(x['text']) + '</p>' for x in ctx))
                 row = db.execute('SELECT f.*, d.title FROM fragments f JOIN documents d ON d.id=f.document_id AND d.version=f.version WHERE f.id=?', (fragment_id,)).fetchone()
                 if row is None:
                     try:
@@ -303,17 +633,17 @@ class Handler(BaseHTTPRequestHandler):
                     except sqlite3.OperationalError:
                         row = None
                     if row is None:
-                        return self.page('Фрагмент не найден', 404)
+                        return self.page('<p>Фрагмент не найден.</p>' + BACK, 404)
                     context = db.execute('SELECT * FROM import_fragments WHERE source_id=? AND version=? ORDER BY rowid', (row['source_id'], row['version'])).fetchall()
-                    content = '<h2>' + esc(row['title']) + '</h2><p>Версия ' + esc(row['version']) + '; выбран ' + esc(row['locator']) + '</p>'
+                    content = source_heading(db, row, cited_range)
                     content += ''.join(render_import_fragment(r, r['id'] == fragment_id, cited_range) for r in context)
-                    return self.page(content + '<a href="/">Новый вопрос</a>')
+                    return self.fragment_page(content)
                 context = db.execute('SELECT * FROM fragments WHERE document_id=? AND version=? ORDER BY id', (row['document_id'], row['version'])).fetchall()
-                content = '<h2>' + esc(row['title']) + '</h2><p>Версия ' + esc(row['version']) + '; выбран ' + esc(row['locator']) + ' (' + esc(row['id']) + ')</p>'
+                content = '<h2>' + esc(row['title']) + '</h2><p class="ver">Версия ' + esc(row['version']) + '; выбран ' + esc(row['locator']) + ' (' + esc(row['id']) + ')</p>'
                 content += ''.join('<p' + (' id="selected"' if r['id'] == fragment_id else '') + '><strong>' + esc(r['locator']) + '</strong> ' + esc(r['text']) + '</p>' for r in context)
-                return self.page(content + '<a href="/">Новый вопрос</a>')
+                return self.fragment_page(content)
         except (sqlite3.Error, OSError):
-            return self.page('Технический сбой при открытии источника. Повторите попытку.', 503)
+            return self.page('<p>Технический сбой при открытии источника. Повторите попытку.</p>' + BACK, 503)
 
     def do_POST(self):
         if self.path in ('/new', '/clear'):
@@ -324,13 +654,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.redirect('/')
             return self.redirect('/', (self.cookie(history.new_id()),))
         if self.path != '/ask':
-            return self.page('Страница не найдена', 404)
+            return self.page('<p>Страница не найдена.</p>' + BACK, 404)
         try:
             length = int(self.headers.get('Content-Length', '0') or 0)
         except ValueError:
             length = -1
         if length < 0 or length > 10000:
-            return self.page('Слишком длинный запрос.', 400)
+            return self.page('<p>Слишком длинный запрос.</p>' + BACK, 400)
         fields = parse_qs(self.rfile.read(length).decode('utf-8', 'replace'), keep_blank_values=True)
         question = fields.get('question', [''])[0]
         conversation = history.from_cookie(self.headers.get('Cookie')) if history.enabled() else None
@@ -344,7 +674,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             question = fields.get('question', [''])[0]
             if len(question) > 2000:
-                return self.page('Слишком длинный вопрос.', 400)
+                return self.page('<p>Слишком длинный вопрос.</p>' + BACK, 400)
             if not question.strip():
                 return self.page(self.form(question) + '<p>Введите вопрос.</p>', 400)
             with closing(connect_existing(DB)) as db, db:
