@@ -10,6 +10,9 @@ from urllib.parse import parse_qs, quote, urlparse
 from .core import DEFAULT_DB, connect, connect_existing, form_answer, import_fixture, imported_parts
 from . import history
 
+# Set while the documents of NAVIGATOR_IMPORT_DIR are being imported at start.
+IMPORTING = {'active': False, 'last': ''}
+
 # One inline stylesheet for every page: the service runs offline, so only system fonts.
 # Reading column ~70 characters; light and dark themes follow the system setting.
 CSS = '''
@@ -728,7 +731,16 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(bytes(data))
 
+    def importing(self):
+        """While the documents are being imported: a page that says so and refreshes itself."""
+        content = ('<meta http-equiv="refresh" content="10"><h2>Идёт загрузка документов</h2>'
+                   '<p>Навигатор импортирует и распознаёт документы; это занимает несколько минут. '
+                   'Страница обновится сама.</p>')
+        return self.page(content, 503, headers=(('Retry-After', '10'),))
+
     def do_GET(self):
+        if IMPORTING['active']:
+            return self.importing()
         parsed = urlparse(self.path)
         if parsed.path == '/':
             if history.enabled():
@@ -819,6 +831,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.page('<p>Технический сбой при открытии источника. Повторите попытку.</p>' + BACK, 503)
 
     def do_POST(self):
+        if IMPORTING['active']:
+            return self.importing()
         if self.path in ('/new', '/clear'):
             conversation = history.from_cookie(self.headers.get('Cookie'))
             if self.path == '/clear' and conversation:
@@ -1085,8 +1099,20 @@ if __name__ == '__main__':
         if args.command == 'import' and result.get('error', 0):
             raise SystemExit(1)
     else:
-        # NAVIGATOR_IMPORT_DIR: import the documents of that folder first (the
-        # container sets /data/originals), then serve.
+        # NAVIGATOR_IMPORT_DIR: import the documents of that folder (the container sets
+        # /data/originals). The web server is up at once; while the import runs (OCR of
+        # scans takes minutes) every page says so instead of the site being unreachable.
+        import threading
         from .autoimport import from_environment
-        from_environment(DB, log=lambda message: print(message, flush=True))
+        def log(message):
+            IMPORTING['last'] = message
+            print(message, flush=True)
+        def run_import():
+            try:
+                from_environment(DB, log=log)
+            finally:
+                IMPORTING['active'] = False
+        if os.environ.get('NAVIGATOR_IMPORT_DIR'):
+            IMPORTING['active'] = True
+            threading.Thread(target=run_import, daemon=True).start()
         HTTPServer((os.environ.get('HOST', '127.0.0.1'), int(os.environ.get('PORT', '8000'))), Handler).serve_forever()

@@ -145,9 +145,14 @@ class ChatWebTest(unittest.TestCase):
             try:
                 for _ in range(300):
                     try:
-                        status, headers, _ = self.request('GET', '/'); break
+                        status, headers, page = self.request('GET', '/')
+                        if status == 200:
+                            break
+                        # While the folder is imported the site answers 503 «Идёт загрузка документов».
+                        self.assertEqual(status, 503); self.assertIn('Идёт загрузка документов', page)
                     except OSError:
-                        time.sleep(.1)
+                        pass
+                    time.sleep(.1)
                 cookie = headers['Set-Cookie'].split(';')[0]
                 self.assertTrue(cookie.startswith(history.COOKIE + '='))
                 # A script without the cookie: the single answer page, nothing kept.

@@ -149,14 +149,16 @@ def pdf(raw):
                 # loses small table digits. Synthetic scans (eval/measure_ocr_dpi.py):
                 # exact amounts 64/108 at 144 dpi, 107/108 at 300, 97/108 at 400.
                 page.get_pixmap(dpi=ocr_dpi(), alpha=False).save(str(imagepath))
-                osd = subprocess.run(['tesseract', str(imagepath), 'stdout', '--psm', '0'], capture_output=True, text=True)
+                # NAVIGATOR_OCR_TESSDATA: a folder of other Tesseract models (e.g. tessdata_best) with osd.traineddata.
+                models = ['--tessdata-dir', os.environ['NAVIGATOR_OCR_TESSDATA']] if os.environ.get('NAVIGATOR_OCR_TESSDATA') else []
+                osd = subprocess.run(['tesseract', str(imagepath), 'stdout', '--psm', '0'] + models, capture_output=True, text=True)
                 match = re.search(r'Rotate:\s*(\d+)', osd.stdout)
                 rotation = int(match.group(1)) if match else None
                 if rotation:
                     im = Image.open(imagepath)
                     im.rotate(-rotation, expand=True).save(imagepath)
                 lang = os.environ.get('NAVIGATOR_OCR_LANG', 'rus+eng')
-                run = subprocess.run(['tesseract', str(imagepath), 'stdout', '-l', lang], capture_output=True, text=True)
+                run = subprocess.run(['tesseract', str(imagepath), 'stdout', '-l', lang] + models, capture_output=True, text=True)
                 if run.returncode:
                     raise RuntimeError('OCR failed: ' + run.stderr.strip()[:500])
                 out.append((f'page/{n}/ocr', run.stdout, {'type':'ocr','page':n,'rotation':rotation,'orientation_uncertain':rotation is None,'language':lang,'requires_visual_review':True,'unreadable':not bool(run.stdout.strip())}))
