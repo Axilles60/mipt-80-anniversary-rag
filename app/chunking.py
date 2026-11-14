@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS chunk_index (key TEXT PRIMARY KEY, value TEXT);
 '''
 # Changing how chunks or their full-text index are built bumps this value;
 # ensure() then rebuilds every version once.
-INDEX_VERSION = '4-table-headers'
+INDEX_VERSION = '5-docx-merges'
 _TITLE_STYLES = ('title', 'heading', 'заголов', 'subtitle')
 # A template: blanks to fill in, or a capitalised FORM title (not "по форме КМ-7").
 _FORM = re.compile(r'_{4,}|«\s*_+\s*»|\bФОРМА\b')
@@ -178,6 +178,14 @@ def build(db, source_id, version, title=None):
     doc_title = title
     first = True
     tables, sheet_levels = {}, {}
+    hierarchical = _hierarchical_tables(rows)
+    filled_rows = {}
+    for r in rows:
+        m = json.loads(r['metadata'] or '{}')
+        if m.get('type') == 'table_row' and any(str(c).strip() for c in m.get('cells', [])):
+            p = r['locator'].rsplit('/row/', 1)[0]
+            filled_rows[p] = filled_rows.get(p, 0) + 1
+    single_row = {p for p, n in filled_rows.items() if n == 1}
     ord_ = 0
     for row in rows:
         meta = json.loads(row['metadata'] or '{}')
@@ -189,15 +197,41 @@ def build(db, source_id, version, title=None):
         if kind == 'table_row':
             prefix = row['locator'].rsplit('/row/', 1)[0]
             cells = [str(c) for c in meta.get('cells', [])]
-            if prefix not in tables:
-                tables[prefix] = cells; continue   # the first row names the columns
-            header = tables[prefix]
+            state = tables.setdefault(prefix, {'header': None, 'caption': ''})
+            filled = [c for c in cells if c.strip()]
+            if not filled:
+                continue                            # an empty row
+            if state['header'] is None:
+                # The header is the first row with several filled cells. Before it: the table's
+                # title in one cell spanning the width (it becomes the caption), empty rows.
+                if len(filled) == 1 and len(cells) > 1 and prefix not in single_row:
+                    state['caption'] = (state['caption'] + ' ' + filled[0].strip()).strip()
+                    continue
+                if prefix not in single_row:
+                    state['header'] = cells; continue
+                state['header'] = []                # a one-row table («от 11.08.2025 | № 3614-1»): its cells as text
+            if len(filled) >= 2 and all(re.fullmatch(r'\d{1,2}', c.strip()) for c in filled):
+                continue                            # the column numbers «1 2 3 4 5» under the header
+            if prefix in hierarchical:
+                # A hierarchy written as an outline: a parent is filled once and the rows under it
+                # leave its column empty. Columns left of the first filled cell come from the row
+                # above, so each row carries its whole path (holder → level 1 → level 2 …).
+                first_filled = next(i for i, c in enumerate(cells) if c.strip())
+                last = state.get('last') or []
+                cells = [last[i] if i < first_filled and i < len(last) and not c.strip() else c for i, c in enumerate(cells)]
+                state['last'] = cells
+                if first_filled == 0 and len(filled) == 1 and len(cells) > 1:
+                    continue                        # a group row (the parent alone): its children carry it
+            header = state['header']
             body = '; '.join((f'{h}: {c}' if h and h != c else c) for h, c in zip(header + [''] * len(cells), cells) if c.strip())
             ord_ += 1
-            # The generator sees what the index sees: «column: value», not the bare cells.
+            # The generator sees what the index sees: «column: value», not the bare cells; the
+            # table's caption is searched with every row of it.
             children.append({'fragment_id': row['id'], 'start': 0, 'end': len(text), 'text': body,
-                             'index_body': body, 'section': section, 'ord': ord_,
-                             'meta': {'type': 'table_row', 'kind': 'norm', 'page': page}})
+                             'index_body': (state['caption'] + '\n' + body) if state['caption'] else body,
+                             'section': section, 'ord': ord_,
+                             'meta': {'type': 'table_row', 'kind': 'norm', 'page': page,
+                                      **({'caption': state['caption']} if state['caption'] else {})}})
             continue
         if kind in ('pdf_text', 'ocr') and not has_headings and section['title'] == '' and page and section.get('page') != page and children:
             open_section('', row['id'], 0, 0, page)   # page as parent while no heading structure is known
@@ -282,6 +316,23 @@ def build(db, source_id, version, title=None):
                         'start': c['start'], 'end': c['end'], 'level': 2, 'parent_id': p['id'], 'ord': c['ord'],
                         'text': c['text'], 'index_text': index, 'meta': dict(c['meta'], section=p['title'], document=doc_title)})
     return out
+
+
+def _hierarchical_tables(rows):
+    """DOCX tables written as an outline: in at least a third of the data rows the first
+    cell is empty while a cell to its right is filled (the parent stands in a row above)."""
+    stats = {}
+    for row in rows:
+        meta = json.loads(row['metadata'] or '{}')
+        if meta.get('type') != 'table_row':
+            continue
+        cells = [str(c) for c in meta.get('cells', [])]
+        if len(cells) < 2 or not any(c.strip() for c in cells):
+            continue
+        prefix = row['locator'].rsplit('/row/', 1)[0]
+        total, indented = stats.get(prefix, (0, 0))
+        stats[prefix] = (total + 1, indented + (not cells[0].strip() and any(c.strip() for c in cells[1:])))
+    return {p for p, (total, indented) in stats.items() if total >= 6 and indented * 3 >= total}
 
 
 def _has_vectors(db):

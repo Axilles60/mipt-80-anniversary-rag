@@ -30,6 +30,35 @@ def digest(raw):
 def xml_text(element):
     return ''.join(x.text or '' for x in element.iter(W + 't'))
 
+def table_rows(table):
+    """(row element, cell texts, indexes of cells filled from above) of a DOCX table.
+
+    A cell merged vertically with the one above (<w:vMerge/> without «restart») is empty
+    in the XML; Word shows the value of the first cell of the group. The row gets that
+    value, so it keeps its parent («Дирекция …», its financial holder) instead of a
+    blank. Grid columns are tracked through horizontal spans (<w:gridSpan>)."""
+    above, out = {}, []
+    for row in table.findall(W + 'tr'):
+        cells, merged, column = [], [], 0
+        for tc in row.findall(W + 'tc'):
+            pr = tc.find(W + 'tcPr')
+            span_el = pr.find(W + 'gridSpan') if pr is not None else None
+            span = int(span_el.get(W + 'val') or 1) if span_el is not None and (span_el.get(W + 'val') or '1').isdigit() else 1
+            vmerge = pr.find(W + 'vMerge') if pr is not None else None
+            text = xml_text(tc)
+            if vmerge is not None and vmerge.get(W + 'val') != 'restart' and not text.strip():
+                text = above.get(column, '')
+                if text:
+                    merged.append(len(cells))
+            elif vmerge is not None:
+                above[column] = text
+            else:
+                above.pop(column, None)
+            cells.append(text)
+            column += max(span, 1)
+        out.append((row, cells, merged))
+    return out
+
 def docx(raw):
     out = []
     with zipfile.ZipFile(io.BytesIO(raw)) as z:
@@ -39,9 +68,11 @@ def docx(raw):
             if child.tag == W + 'p':
                 out.append((f'body/{index}/paragraph', xml_text(child), {'type':'paragraph', 'footnote_ids':[ref.get(W+'id') for ref in child.iter(W+'footnoteReference') if ref.get(W+'id')], 'style': (child.find(W+'pPr/'+W+'pStyle').get(W+'val') if child.find(W+'pPr/'+W+'pStyle') is not None else None)}))
             elif child.tag == W + 'tbl':
-                for r, row in enumerate(child.findall(W+'tr'), 1):
-                    cells = [xml_text(cell) for cell in row.findall(W+'tc')]
-                    out.append((f'body/{index}/table/row/{r}', ' | '.join(cells), {'type':'table_row','cells':cells,'footnote_ids':[ref.get(W+'id') for ref in row.iter(W+'footnoteReference') if ref.get(W+'id')]}))
+                for r, (row, cells, merged) in enumerate(table_rows(child), 1):
+                    meta = {'type':'table_row','cells':cells,'footnote_ids':[ref.get(W+'id') for ref in row.iter(W+'footnoteReference') if ref.get(W+'id')]}
+                    if merged:
+                        meta['merged_from_above'] = merged
+                    out.append((f'body/{index}/table/row/{r}', ' | '.join(cells), meta))
         if 'word/footnotes.xml' in z.namelist():
             root = ET.fromstring(z.read('word/footnotes.xml'))
             for foot in root.findall(W+'footnote'):
