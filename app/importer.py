@@ -196,6 +196,23 @@ def import_one(db, sid, name, raw):
         record_error(db,sid,name,sha,exc)
         return 'error'
 
+def zip_name(info):
+    """The member name as its author wrote it. A ZIP made on Windows without the UTF-8 flag
+    stores names in the OEM code page (cp866 for Russian), which Python reads as cp437:
+    «данные/Положение.docx» came out as «¤ ­­ë¥/...». Decode it back: UTF-8 if it is
+    valid UTF-8, otherwise cp866."""
+    if info.flag_bits & 0x800:
+        return info.filename
+    try:
+        raw = info.filename.encode('cp437')
+    except UnicodeEncodeError:
+        return info.filename
+    try:
+        return raw.decode('utf-8')
+    except UnicodeDecodeError:
+        return raw.decode('cp866', errors='replace')
+
+
 def safe_zip_name(name):
     p = PurePosixPath(name)
     return bool(name) and not p.is_absolute() and not re.match(r'^[A-Za-z]:', name) and '\\' not in name and '..' not in p.parts and '__MACOSX' not in p.parts and not any(part.startswith('._') for part in p.parts)
@@ -252,16 +269,17 @@ def batch(db_path, paths, manifest_path=None, root=None):
                 if p.suffix.lower() == '.zip':
                     with zipfile.ZipFile(p) as z:
                         for info in z.infolist():
-                            if info.is_dir() or '__MACOSX' in PurePosixPath(info.filename).parts or PurePosixPath(info.filename).name.startswith('._'):
+                            member = zip_name(info)
+                            if info.is_dir() or '__MACOSX' in PurePosixPath(member).parts or PurePosixPath(member).name.startswith('._'):
                                 continue
-                            if not safe_zip_name(info.filename) or info.file_size > 200_000_000:
-                                record_error(db,'ZIP-ERROR',info.filename,None,ValueError('unsafe path or oversized entry'))
+                            if not safe_zip_name(member) or info.file_size > 200_000_000:
+                                record_error(db,'ZIP-ERROR',member,None,ValueError('unsafe path or oversized entry'))
                                 counts['error'] = counts.get('error',0)+1
                                 continue
                             try:
-                                process(info.filename,z.read(info))
+                                process(member,z.read(info))
                             except Exception as exc:
-                                record_error(db,'ZIP-ERROR',info.filename,None,exc)
+                                record_error(db,'ZIP-ERROR',member,None,exc)
                                 counts['error'] = counts.get('error',0)+1
                 else:
                     process(known_as[path],p.read_bytes())

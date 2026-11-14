@@ -125,7 +125,7 @@ def has_token(token, text):
     return strip(token) in {strip(t) for t in CLAIM_TOKENS.findall(text)}
 
 
-GAP = re.compile(r'Недостаточно данных для части вопроса:.*?(?=Самопроверка|Источник:|Применимость|$)', re.S)
+GAP = re.compile(r'Недостаточно данных для части вопроса:.*?(?=Фрагменты документов|Источники и ограничения|Самопроверка|Источник:|Применимость|$)', re.S)
 
 
 def without_gap(body):
@@ -252,7 +252,8 @@ def score(c, page, seconds, db, needles):
             continue
         # The requisites the answer prints in «Источник» are visible to the reader too.
         support = ' '.join(unit_text(db, parse_qs(urlsplit(h).query).get('id', [''])[0]) for h in item['hrefs']) + ' ' + sources_line
-        claim = re.sub(r'\b[A-Z][\w-]*@[0-9a-f]{8,}#\S+', ' ', text).strip()   # drop printed fragment IDs
+        # The statement without its citation labels (a fragment ID or «стр. 2»: not facts of the claim).
+        claim = re.sub(r'\b[A-Z][\w-]*@[0-9a-f]{8,}#\S+', ' ', item.get('plain', text)).strip()
         missing = [t for t in CLAIM_TOKENS.findall(claim) if not has_token(t, support)]
         if missing: unsupported.append({'text': claim[:200], 'missing': missing[:5]})
         claims.append(claim)
