@@ -669,6 +669,41 @@ def topic(model, question):
     return 'off_topic' if raw.get('topic') == 'off_topic' else 'insufficient'
 
 
+CONDENSE_SYSTEM = (
+    'Ты переписываешь последний вопрос сотрудника так, чтобы он был понятен без предыдущего диалога. '
+    'Подставь из диалога только то, на что вопрос ссылается: местоимения («там», «у них», «его кабинет»), '
+    'опущенный предмет («а для бухгалтерии?», «а если на 3 дня?», «а по старому приказу?»). '
+    'Не добавляй фактов, чисел и выводов из ответов, не отвечай на вопрос и не меняй его смысл. '
+    'Если вопрос и так понятен сам по себе или начинает новую тему — верни его без изменений.')
+CONDENSE_SCHEMA = {'type': 'object', 'properties': {'question': {'type': 'string'}}, 'required': ['question']}
+
+
+def condense(model, history, question):
+    """A follow-up question rewritten into a self-contained one, using the last turns.
+
+    «А где их кабинет?» after a question about the procurement department becomes «Где
+    кабинет отдела закупок?». Retrieval, the answer and its checks then work on the
+    rewritten question. Without history, without a model or on any failure: the question
+    as asked. Numbers, codes and addresses may come only from the questions of the
+    dialogue, not from answers: a rewritten question must not carry an unchecked value."""
+    if not history or model is None:
+        return question
+    dialog = '\n'.join(f'Вопрос: {h["question"]}\nОтвет: {h["answer_text"][:400]}' for h in history[-3:])
+    try:
+        raw = json.loads(model.complete([{'role': 'system', 'content': CONDENSE_SYSTEM},
+                                         {'role': 'user', 'content': f'Диалог:\n{dialog}\n\nПоследний вопрос: {question}'}],
+                                        schema=CONDENSE_SCHEMA, max_tokens=160))
+    except (OSError, ValueError, KeyError, IndexError):
+        return question
+    rewritten = re.sub(r'\s+', ' ', str(raw.get('question') or '')).strip()
+    if not rewritten or len(rewritten) > 2 * len(question) + 300:
+        return question
+    asked = {_tok(t) for t in CLAIM_TOKENS.findall(question + ' ' + ' '.join(h['question'] for h in history))}
+    if any(_tok(t) not in asked for t in CLAIM_TOKENS.findall(rewritten)):
+        return question
+    return rewritten
+
+
 def answer(db, question, when=None, deadline=None):
     """Structured RAG answer, or None to fall back to the extractive pipeline."""
     model = llm()

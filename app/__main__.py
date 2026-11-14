@@ -8,6 +8,22 @@ import sqlite3
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, quote, urlparse
 from .core import DEFAULT_DB, connect, connect_existing, form_answer, import_fixture, imported_parts
+from . import history
+
+STYLE = ('<style>:root{color-scheme:light dark;--bg:#fff;--fg:#1d1d1f;--muted:#6b6b70;--line:#e3e3e8;--q:#eef3ff;--accent:#2557d6}'
+         '@media (prefers-color-scheme:dark){:root{--bg:#141416;--fg:#ececf0;--muted:#a0a0a8;--line:#2c2c31;--q:#1e2740;--accent:#7aa2ff}}'
+         'body{background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;'
+         'max-width:860px;margin:0 auto;padding:16px}h1{font-size:1.4rem;margin:.2rem 0 1rem}h2{font-size:1.1rem}'
+         'h3{font-size:1rem;font-weight:600}a{color:var(--accent)}.turn{border-bottom:1px solid var(--line);padding:12px 0}'
+         '.q{background:var(--q);border-radius:12px;padding:8px 12px;display:inline-block;font-weight:600}'
+         '.as{color:var(--muted);font-size:.9rem;margin:4px 0}.a{margin-top:6px}.hint,.note{color:var(--muted)}'
+         '.note{font-size:.85rem}form.ask{display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;'
+         'background:var(--bg);padding:12px 0;border-top:1px solid var(--line)}form.ask input[name=question]{flex:1 1 320px;'
+         'font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--fg)}'
+         '.date{color:var(--muted);font-size:.9rem;display:flex;align-items:center;gap:6px}'
+         'button{font:inherit;padding:10px 16px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}'
+         'button.secondary{background:transparent;color:var(--accent);border:1px solid var(--line);padding:6px 12px}'
+         '.actions{display:flex;gap:8px;margin-top:8px}.actions form{margin:0}</style>')
 
 DB = os.environ.get('NAVIGATOR_DB', DEFAULT_DB)
 
@@ -146,20 +162,102 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass  # Questions and document text are not logged.
 
-    def page(self, content, status=200):
-        body = ('<!doctype html><html lang="ru"><meta charset="utf-8"><title>Навигатор</title><body><h1>Навигатор сотрудника</h1>' + content + '</body></html>').encode()
+    captured = None      # a list while a dialogue turn collects its answer instead of sending it
+
+    def page(self, content, status=200, headers=()):
+        if self.captured is not None:
+            self.captured.append((content, status))
+            return
+        body = ('<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+                '<title>Навигатор</title>' + STYLE + '<body><h1>Навигатор сотрудника</h1>' + content + '</body></html>').encode()
         self.send_response(status)
+        for name, value in headers:
+            self.send_header(name, value)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
-    def form(self, question=''):
+    def form(self, question='', chat=False):
+        if chat:
+            return ('<form method="post" action="/ask" class="ask"><input name="question" maxlength="2000" required '
+                    'placeholder="Ваш вопрос о регламентах" aria-label="Вопрос"><label class="date">На дату '
+                    '<input type="date" name="date"></label><button>Спросить</button></form>')
         return '<form method="post" action="/ask"><label>Вопрос <input name="question" maxlength="2000" value="' + esc(question) + '"></label> <label>Дата <input type="date" name="date"></label> <label>Категория <input name="category"></label><button>Найти</button></form>'
+
+    def redirect(self, location, headers=()):
+        self.send_response(303)
+        for name, value in headers:
+            self.send_header(name, value)
+        self.send_header('Location', location)
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
+    def cookie(self, conversation):
+        return ('Set-Cookie', f'{history.COOKIE}={conversation}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000')
+
+    def chat_page(self):
+        """The dialogue of this browser: earlier questions with their answers, then the form."""
+        conversation = history.from_cookie(self.headers.get('Cookie'))
+        headers = ()
+        if conversation is None:
+            conversation = history.new_id()
+            headers = (self.cookie(conversation),)
+        try:
+            with closing(connect(DB)) as db, db:
+                turns = history.turns(db, conversation)
+        except (sqlite3.Error, OSError):
+            turns = []
+        content = '<main class="chat">'
+        if not turns:
+            content += ('<p class="hint">Задайте вопрос о внутренних регламентах. Можно уточнять в продолжение: '
+                        '«а для бухгалтерии?», «а где их кабинет?». Ответ собирается только из документов, '
+                        'каждое утверждение — со ссылкой на пункт.</p>')
+        for t in turns:
+            content += f'<section class="turn" id="t{t["n"]}"><div class="q">{esc(t["question"])}</div>'
+            if t['standalone'] != t['question']:
+                content += f'<div class="as">Понял вопрос как: {esc(t["standalone"])}</div>'
+            content += f'<div class="a">{t["answer_html"]}</div></section>'
+        content += '</main>' + self.form(chat=True)
+        content += ('<div class="actions"><form method="post" action="/new"><button class="secondary">Новый диалог</button></form>'
+                    '<form method="post" action="/clear"><button class="secondary">Очистить историю</button></form></div>'
+                    '<p class="note">История диалога хранится на сервере навигатора в его базе и никуда не передаётся.</p>')
+        content += '<script>var l=document.querySelector(".turn:last-of-type");if(l)l.scrollIntoView();'\
+                   'document.querySelector("input[name=question]").focus();</script>'
+        return self.page(content, headers=headers)
+
+    def chat_post(self, conversation, fields):
+        """One dialogue turn: rewrite a follow-up into a self-contained question, answer it as
+        a single question (same pipeline and checks), keep the turn, show the dialogue."""
+        question = fields.get('question', [''])[0]
+        from . import rag
+        try:
+            with closing(connect(DB)) as db, db:
+                turns = history.turns(db, conversation, limit=3)
+        except (sqlite3.Error, OSError):
+            turns = []
+        model = rag.llm() if rag.enabled() and turns else None
+        standalone = rag.condense(model, turns, question) if model else question
+        self.captured = []
+        try:
+            self.answer_post(dict(fields, question=[standalone]))
+        finally:
+            captured, self.captured = self.captured, None
+        content, status = captured[-1] if captured else ('<p>Технический сбой. Повторите попытку.</p>', 503)
+        prefix = self.form(standalone)
+        answer = content[len(prefix):] if content.startswith(prefix) else content
+        if status < 500:
+            with closing(connect(DB)) as db, db:
+                n = history.add(db, conversation, question, standalone, history.plain(answer), answer,
+                                fields.get('date', [''])[0] or None)
+            return self.redirect(f'/#t{n}')
+        return self.page(self.form(chat=True) + answer, status)
 
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == '/':
+            if history.enabled():
+                return self.chat_page()
             return self.page(self.form())
         if parsed.path != '/fragment':
             return self.page('Страница не найдена', 404)
@@ -218,13 +316,32 @@ class Handler(BaseHTTPRequestHandler):
             return self.page('Технический сбой при открытии источника. Повторите попытку.', 503)
 
     def do_POST(self):
+        if self.path in ('/new', '/clear'):
+            conversation = history.from_cookie(self.headers.get('Cookie'))
+            if self.path == '/clear' and conversation:
+                with closing(connect(DB)) as db, db:
+                    history.clear(db, conversation)
+                return self.redirect('/')
+            return self.redirect('/', (self.cookie(history.new_id()),))
         if self.path != '/ask':
             return self.page('Страница не найдена', 404)
         try:
-            length = int(self.headers.get('Content-Length', '0'))
-            if length < 0 or length > 10000:
-                return self.page('Слишком длинный запрос.', 400)
-            fields = parse_qs(self.rfile.read(length).decode('utf-8'), keep_blank_values=True)
+            length = int(self.headers.get('Content-Length', '0') or 0)
+        except ValueError:
+            length = -1
+        if length < 0 or length > 10000:
+            return self.page('Слишком длинный запрос.', 400)
+        fields = parse_qs(self.rfile.read(length).decode('utf-8', 'replace'), keep_blank_values=True)
+        question = fields.get('question', [''])[0]
+        conversation = history.from_cookie(self.headers.get('Cookie')) if history.enabled() else None
+        # A browser in a dialogue (cookie) gets the dialogue; a request without the cookie
+        # (scripts, the evaluator) gets the single answer page, as before.
+        if conversation and question.strip() and len(question) <= 2000:
+            return self.chat_post(conversation, fields)
+        return self.answer_post(fields)
+
+    def answer_post(self, fields):
+        try:
             question = fields.get('question', [''])[0]
             if len(question) > 2000:
                 return self.page('Слишком длинный вопрос.', 400)
