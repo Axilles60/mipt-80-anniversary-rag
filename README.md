@@ -127,3 +127,4 @@ NAVIGATOR_PIPELINE=rag NAVIGATOR_RETRIEVAL=hybrid NAVIGATOR_LLM_URL=http://127.0
 - [Журнал качества](sdd/quality-progress.md) — итерации, замеры, отклонённые изменения, следующие шаги.
 - [Отчёт о работе](REPORT.md) — кратко.
 - [Приёмка владельцем на своих документах](eval/owner-acceptance.md), [матрица приёмки](eval/acceptance-matrix.md), [проверка поставки](eval/release-verification.md).
+- [Итоговая презентация](Навигатор сотрудника.pdf) - бизнес метрики и общие оценки
